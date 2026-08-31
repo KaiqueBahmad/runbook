@@ -77,3 +77,17 @@ func checkRunbookfile(path string) error {
 	}
 	return nil
 }
+
+// runbookDirName is the directory Runbook creates alongside the Runbookfile to
+// keep its own files.
+const runbookDirName = ".runbook"
+
+// ensureRunbookDir returns the path of Runbook's directory next to the
+// Runbookfile at path, creating it if it does not exist yet.
+func ensureRunbookDir(path string) (string, error) {
+	dir := filepath.Join(filepath.Dir(path), runbookDirName)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return "", fmt.Errorf("creating %s: %w", dir, err)
+	}
+	return dir, nil
+}

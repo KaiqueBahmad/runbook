@@ -38,6 +38,10 @@ To print the usage text and exit without opening a window, pass `--help` (or `-h
 runbook --help
 ```
 
+On startup Runbook also creates a `.runbook` directory next to the Runbookfile
+if it isn't there already — so it lands in whatever folder the file lives in.
+That's where Runbook keeps its own files, one set per project.
+
 The file has to exist before the window opens. If it's missing, or the path points at
 a directory, Runbook says so and exits rather than starting up empty.
 

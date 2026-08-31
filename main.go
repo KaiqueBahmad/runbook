@@ -27,6 +27,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	if _, err := ensureRunbookDir(path); err != nil {
+		fmt.Fprintf(os.Stderr, "runbook: %v\n", err)
+		os.Exit(1)
+	}
+
 	a := app.New()
 	w := a.NewWindow("Runbook")
 
