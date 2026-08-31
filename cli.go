@@ -13,10 +13,32 @@ const defaultRunbookfile = "Runbookfile"
 
 const usage = "usage: runbook [runbookfile]"
 
+// help is the full text printed for --help and -h.
+const help = usage + `
+
+Runbook opens a GUI control panel for the commands listed in a Runbookfile.
+
+With no arguments it looks for a Runbookfile in the current directory; pass a
+path to open a different file instead.
+
+Options:
+  -h, --help   print this help and exit`
+
+// errHelpRequested is returned by parseArgs when the arguments ask for the
+// help text. It is not a failure: main prints help and exits successfully.
+var errHelpRequested = errors.New("help requested")
+
 // parseArgs turns the command line arguments (without the program name) into
 // the full path of the Runbookfile to open. It accepts nothing or a single
-// path; relative paths are resolved against the current directory.
+// path; relative paths are resolved against the current directory. A --help or
+// -h anywhere in the arguments returns errHelpRequested instead.
 func parseArgs(args []string) (string, error) {
+	for _, arg := range args {
+		if arg == "--help" || arg == "-h" {
+			return "", errHelpRequested
+		}
+	}
+
 	var path string
 
 	switch len(args) {

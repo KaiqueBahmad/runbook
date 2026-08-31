@@ -30,8 +30,13 @@ runbook path/to/other-runbookfile
 ```
 
 Relative paths are resolved against the current directory, so Runbook always works
-with the full path to the file. Those are the only two forms — anything else exits
-with a usage error.
+with the full path to the file. Anything else exits with a usage error.
+
+To print the usage text and exit without opening a window, pass `--help` (or `-h`):
+
+```
+runbook --help
+```
 
 The file has to exist before the window opens. If it's missing, or the path points at
 a directory, Runbook says so and exits rather than starting up empty.

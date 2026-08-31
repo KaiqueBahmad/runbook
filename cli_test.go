@@ -1,8 +1,10 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -37,6 +39,27 @@ func TestParseArgs(t *testing.T) {
 			}
 			if got != tt.want {
 				t.Errorf("parseArgs(%q) = %q, want %q", tt.args, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestParseArgsHelp(t *testing.T) {
+	args := [][]string{
+		{"--help"},
+		{"-h"},
+		{"path/to/other", "--help"},
+		{"-h", "a", "b"},
+	}
+
+	for _, tt := range args {
+		t.Run(strings.Join(tt, " "), func(t *testing.T) {
+			got, err := parseArgs(tt)
+			if !errors.Is(err, errHelpRequested) {
+				t.Fatalf("parseArgs(%q) error = %v, want errHelpRequested", tt, err)
+			}
+			if got != "" {
+				t.Errorf("parseArgs(%q) = %q, want empty path", tt, got)
 			}
 		})
 	}
