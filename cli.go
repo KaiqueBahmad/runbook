@@ -82,12 +82,28 @@ func checkRunbookfile(path string) error {
 // keep its own files.
 const runbookDirName = ".runbook"
 
+// gitignoreAll is the content Runbook puts in the directory's .gitignore. The
+// pattern covers the ignore file itself, so nothing in there ever reaches the
+// project's git status.
+const gitignoreAll = "*\n"
+
 // ensureRunbookDir returns the path of Runbook's directory next to the
-// Runbookfile at path, creating it if it does not exist yet.
+// Runbookfile at path, creating it if it does not exist yet along with the
+// .gitignore that keeps its contents out of the project's repository.
 func ensureRunbookDir(path string) (string, error) {
 	dir := filepath.Join(filepath.Dir(path), runbookDirName)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", fmt.Errorf("creating %s: %w", dir, err)
+	}
+
+	ignore := filepath.Join(dir, ".gitignore")
+	switch _, err := os.Stat(ignore); {
+	case errors.Is(err, fs.ErrNotExist):
+		if err := os.WriteFile(ignore, []byte(gitignoreAll), 0o600); err != nil {
+			return "", fmt.Errorf("creating %s: %w", ignore, err)
+		}
+	case err != nil:
+		return "", err
 	}
 	return dir, nil
 }
