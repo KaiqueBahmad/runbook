@@ -107,3 +107,22 @@ func ensureRunbookDir(path string) (string, error) {
 	}
 	return dir, nil
 }
+
+// metadataExt is appended to the Runbookfile's name for the file where Runbook
+// keeps what it knows about that Runbookfile.
+const metadataExt = ".metadata"
+
+// ensureMetadataFile returns the path of the metadata file inside dir for the
+// Runbookfile at path, creating it empty if it does not exist yet.
+func ensureMetadataFile(dir, path string) (string, error) {
+	metadata := filepath.Join(dir, filepath.Base(path)+metadataExt)
+
+	f, err := os.OpenFile(metadata, os.O_RDONLY|os.O_CREATE, 0o600)
+	if err != nil {
+		return "", fmt.Errorf("creating %s: %w", metadata, err)
+	}
+	if err := f.Close(); err != nil {
+		return "", fmt.Errorf("closing %s: %w", metadata, err)
+	}
+	return metadata, nil
+}

@@ -27,7 +27,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	if _, err := ensureRunbookDir(path); err != nil {
+	dir, err := ensureRunbookDir(path)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "runbook: %v\n", err)
+		os.Exit(1)
+	}
+
+	if _, err := ensureMetadataFile(dir, path); err != nil {
 		fmt.Fprintf(os.Stderr, "runbook: %v\n", err)
 		os.Exit(1)
 	}
