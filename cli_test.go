@@ -25,10 +25,14 @@ func TestParseArgs(t *testing.T) {
 		wantErr bool
 	}{
 		{"no args defaults to Runbookfile", nil, abs(t, defaultRunbookfile), false},
-		{"relative path is resolved", []string{"path/to/other"}, abs(t, "path/to/other"), false},
-		{"absolute path is kept", []string{"/etc/Runbookfile"}, "/etc/Runbookfile", false},
-		{"empty path", []string{""}, "", true},
-		{"too many args", []string{"a", "b"}, "", true},
+		{"relative path is resolved", []string{"-f", "path/to/other"}, abs(t, "path/to/other"), false},
+		{"absolute path is kept", []string{"-f", "/etc/Runbookfile"}, "/etc/Runbookfile", false},
+		{"long flag", []string{"--file", "/etc/Runbookfile"}, "/etc/Runbookfile", false},
+		{"empty path", []string{"-f", ""}, "", true},
+		{"path without the flag", []string{"path/to/other"}, "", true},
+		{"flag without a path", []string{"-f"}, "", true},
+		{"unknown flag", []string{"--nope", "path/to/other"}, "", true},
+		{"too many args", []string{"-f", "a", "b"}, "", true},
 	}
 
 	for _, tt := range tests {
@@ -48,7 +52,7 @@ func TestParseArgsHelp(t *testing.T) {
 	args := [][]string{
 		{"--help"},
 		{"-h"},
-		{"path/to/other", "--help"},
+		{"-f", "path/to/other", "--help"},
 		{"-h", "a", "b"},
 	}
 

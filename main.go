@@ -18,7 +18,7 @@ func main() {
 		return
 	}
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "runbook: %v\n%s\n", err, usage)
+		fmt.Fprintf(os.Stderr, "runbook: %v\n%s\n", err, helpHint)
 		os.Exit(2)
 	}
 
