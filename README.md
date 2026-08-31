@@ -33,6 +33,9 @@ Relative paths are resolved against the current directory, so Runbook always wor
 with the full path to the file. Those are the only two forms — anything else exits
 with a usage error.
 
+The file has to exist before the window opens. If it's missing, or the path points at
+a directory, Runbook says so and exits rather than starting up empty.
+
 Either way, this opens the control panel. Each entry gets:
 
 - A **Start** / **Stop** button (Stop is a no-op once a one-off script has already finished)

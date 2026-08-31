@@ -3,6 +3,8 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io/fs"
+	"os"
 	"path/filepath"
 )
 
@@ -34,4 +36,22 @@ func parseArgs(args []string) (string, error) {
 		return "", fmt.Errorf("resolving %q: %w", path, err)
 	}
 	return full, nil
+}
+
+// checkRunbookfile reports whether path is a readable regular file.
+func checkRunbookfile(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return fmt.Errorf("no runbookfile at %s", path)
+		}
+		return err
+	}
+	if info.IsDir() {
+		return fmt.Errorf("%s is a directory, not a runbookfile", path)
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("%s is not a regular file", path)
+	}
+	return nil
 }
