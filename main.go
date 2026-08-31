@@ -27,6 +27,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	entries, err := readRunbookfile(path)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "runbook: %v\n", err)
+		os.Exit(1)
+	}
+	printEntries(os.Stdout, entries)
+
 	dir, err := ensureRunbookDir(path)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "runbook: %v\n", err)

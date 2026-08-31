@@ -1,0 +1,49 @@
+# Runbook's own commands, written in Runbook's own format.
+#
+# A command is a name on a line of its own, followed by an indented block of
+# fields. Only run is required.
+
+# The build script: compiles into bin/ and opens the window.
+app/start:
+  run: ./run.sh
+
+# env adds variables on top of the ones Runbook was started with. Fyne reads
+# both of these, so this starts the same build in the light theme at double
+# size.
+app/start-light:
+  run: ./run.sh
+  env:
+    FYNE_THEME: light
+    FYNE_SCALE: 2
+
+# dir is relative to this file, not to the shell Runbook was started from, so
+# this one runs whatever the last build left in bin/.
+app/help:
+  dir: bin
+  run: ./runbook --help
+
+# Slashes group commands into folders in the panel. They are labels only: every
+# command below still runs at the root of the repository.
+go/build:
+  run: go build -o bin/runbook .
+
+go/test:
+  run: go test ./...
+
+go/vet:
+  run: go vet ./...
+
+go/fmt:
+  run: gofmt -l .
+
+go/tidy:
+  run: go mod tidy
+
+# The command is taken as written, colons and all.
+git/log:
+  run: git log --pretty=format:'%h %s' -10
+
+# A # opens a comment only at the start of a line, so the one below stays part
+# of the command — this counts the comment lines in this very file.
+comments:
+  run: grep -c '^#' Runbookfile
