@@ -20,10 +20,16 @@ Runbook replaces that ritual with a single file and a single window.
 ## Usage
 
 ```
-runbook Runbookfile
+runbook
 ```
 
-This opens the control panel. Each entry gets:
+With no arguments, Runbook looks for a `Runbookfile` in the current directory. To point it at a different file, pass `-f`:
+
+```
+runbook -f path/to/other-runbookfile
+```
+
+Either way, this opens the control panel. Each entry gets:
 
 - A **Start** / **Stop** button (Stop is a no-op once a one-off script has already finished)
 - A live-updating **log view** (stdout and stderr)
