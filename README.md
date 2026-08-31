@@ -23,11 +23,15 @@ Runbook replaces that ritual with a single file and a single window.
 runbook
 ```
 
-With no arguments, Runbook looks for a `Runbookfile` in the current directory. To point it at a different file, pass `-f`:
+With no arguments, Runbook looks for a `Runbookfile` in the current directory. To point it at a different file, pass its path:
 
 ```
-runbook -f path/to/other-runbookfile
+runbook path/to/other-runbookfile
 ```
+
+Relative paths are resolved against the current directory, so Runbook always works
+with the full path to the file. Those are the only two forms — anything else exits
+with a usage error.
 
 Either way, this opens the control panel. Each entry gets:
 

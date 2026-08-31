@@ -1,6 +1,9 @@
 package main
 
 import (
+	"fmt"
+	"os"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
@@ -8,10 +11,16 @@ import (
 )
 
 func main() {
-	a := app.New()
-	w := a.NewWindow("Hello Fyne")
+	path, err := parseArgs(os.Args[1:])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "runbook: %v\n%s\n", err, usage)
+		os.Exit(2)
+	}
 
-	label := widget.NewLabel("Hello, World!")
+	a := app.New()
+	w := a.NewWindow("Runbook")
+
+	label := widget.NewLabel(fmt.Sprintf("Runbookfile: %s", path))
 	button := widget.NewButton("Click me", func() {
 		label.SetText("Button clicked!")
 	})
