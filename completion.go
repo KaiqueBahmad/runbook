@@ -23,8 +23,8 @@ func completionScript(shell string) string {
 
 const bashCompletion = `# runbook completion for bash
 _runbook() {
-    local cur prev i
-    local -a seen
+    local cur prev file i
+    local -a seen opt
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
@@ -41,9 +41,10 @@ _runbook() {
     fi
 
     # What has been typed already, flags and their values left out.
+    file=""
     for ((i = 1; i < COMP_CWORD; i++)); do
         case "${COMP_WORDS[i]}" in
-            -f|--file) i=$((i + 1)) ;;
+            -f|--file) i=$((i + 1)); file="${COMP_WORDS[i]}" ;;
             -*) ;;
             *) seen+=("${COMP_WORDS[i]}") ;;
         esac
@@ -51,12 +52,22 @@ _runbook() {
 
     case "${#seen[@]}" in
         0)
-            COMPREPLY=($(compgen -W 'list completion' -- "$cur"))
+            COMPREPLY=($(compgen -W 'list run completion' -- "$cur"))
             ;;
         1)
-            if [[ "${seen[0]}" == completion ]]; then
-                COMPREPLY=($(compgen -W 'bash zsh fish' -- "$cur"))
-            fi
+            case "${seen[0]}" in
+                completion)
+                    COMPREPLY=($(compgen -W 'bash zsh fish' -- "$cur"))
+                    ;;
+                run)
+                    # The names come from the Runbookfile being completed for,
+                    # asked of the very runbook being typed. A newline IFS keeps
+                    # names with spaces in one piece.
+                    [[ -n "$file" ]] && opt=(-f "$file")
+                    local IFS=$'\n'
+                    COMPREPLY=($(compgen -W "$("${COMP_WORDS[0]}" list "${opt[@]}" 2>/dev/null)" -- "$cur"))
+                    ;;
+            esac
             ;;
     esac
 }
@@ -65,10 +76,11 @@ complete -F _runbook runbook
 
 const zshCompletion = `# runbook completion for zsh
 _runbook() {
-    local state
+    local state prog=$words[1]
     local -a commands
     commands=(
         'list:print the name of every command in the Runbookfile'
+        'run:run one command in this terminal'
         'completion:print a completion script for bash, zsh or fish'
     )
 
@@ -89,6 +101,9 @@ _runbook() {
                 completion)
                     (( CURRENT == 2 )) && _values 'shell' bash zsh fish
                     ;;
+                run)
+                    (( CURRENT == 2 )) && compadd -- ${(f)"$($prog list 2>/dev/null)"}
+                    ;;
             esac
             ;;
     esac
@@ -97,14 +112,46 @@ compdef _runbook runbook
 `
 
 const fishCompletion = `# runbook completion for fish
+
+# The words typed so far, flags and their values left out, so a completion can
+# tell "runbook run <TAB>" from "runbook run api <TAB>".
+function __runbook_seen
+    set -l skip 0
+    for word in (commandline -opc)[2..-1]
+        if test $skip -eq 1
+            set skip 0
+        else if contains -- $word -f --file
+            set skip 1
+        else if not string match -q -- '-*' $word
+            echo $word
+        end
+    end
+end
+
+# True while the argument of the given command is being typed.
+function __runbook_argument_of
+    set -l seen (__runbook_seen)
+    test (count $seen) -eq 1
+    and test "$seen[1]" = "$argv[1]"
+end
+
+# The command names, asked of the very runbook being typed.
+function __runbook_names
+    set -l prog (commandline -opc)[1]
+    $prog list 2>/dev/null
+end
+
 complete -c runbook -f
 complete -c runbook -s h -l help -d 'print this help and exit'
 complete -c runbook -s f -l file -r -F -d 'Runbookfile to work on'
-complete -c runbook -n __fish_use_subcommand -a list \
+complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a list \
     -d 'print the name of every command in the Runbookfile'
-complete -c runbook -n __fish_use_subcommand -a completion \
+complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a run \
+    -d 'run one command in this terminal'
+complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a completion \
     -d 'print a completion script for bash, zsh or fish'
-complete -c runbook \
-    -n '__fish_seen_subcommand_from completion; and not __fish_seen_subcommand_from bash zsh fish' \
+complete -c runbook -n '__runbook_argument_of completion' \
     -a 'bash zsh fish' -d shell
+complete -c runbook -n '__runbook_argument_of run' \
+    -a '(__runbook_names)' -d command
 `

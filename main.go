@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	// "fyne.io/fyne/v2"
 	// "fyne.io/fyne/v2/app"
@@ -40,10 +41,24 @@ func main() {
 		os.Exit(1)
 	}
 
-	// list only reads, so it leaves no .runbook directory behind.
+	// list and run only read, so they leave no .runbook directory behind.
 	if in.cmd == cmdList {
 		printNames(os.Stdout, entries)
 		return
+	}
+
+	if in.cmd == cmdRun {
+		entry, err := findEntry(entries, in.rest[0])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "runbook: %v\n", err)
+			os.Exit(1)
+		}
+		code, err := runEntry(entry, filepath.Dir(in.path), os.Stdout, os.Stderr)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "runbook: %v\n", err)
+			os.Exit(1)
+		}
+		os.Exit(code)
 	}
 
 	printEntries(os.Stdout, entries)

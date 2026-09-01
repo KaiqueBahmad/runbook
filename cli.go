@@ -29,6 +29,7 @@ path after -f to open a different file instead.
 
 Commands:
   list         print the name of every command in the Runbookfile
+  run <name>   run one of them in this terminal, and exit with its status
   completion   print a completion script for bash, zsh or fish
 
 Options:
@@ -48,8 +49,12 @@ const (
 // The commands runbook takes. An empty command opens the panel.
 const (
 	cmdList       = "list"
+	cmdRun        = "run"
 	cmdCompletion = "completion"
 )
+
+// commands is every command runbook answers to.
+var commands = []string{cmdList, cmdRun, cmdCompletion}
 
 // invocation is what a command line asked for.
 type invocation struct {
@@ -93,7 +98,7 @@ func parseArgs(args []string) (invocation, error) {
 		case in.cmd != "":
 			in.rest = append(in.rest, arg)
 
-		case arg == cmdList || arg == cmdCompletion:
+		case slices.Contains(commands, arg):
 			in.cmd = arg
 
 		default:
@@ -118,12 +123,18 @@ func parseArgs(args []string) (invocation, error) {
 
 // checkRest reports whether a command was given the arguments it takes.
 func checkRest(in invocation) error {
-	if in.cmd == cmdCompletion {
+	switch in.cmd {
+	case cmdCompletion:
 		switch {
 		case len(in.rest) == 0:
 			return fmt.Errorf("%s needs a shell: %s", cmdCompletion, strings.Join(shells, ", "))
 		case !slices.Contains(shells, in.rest[0]):
 			return fmt.Errorf("unknown shell %q, want %s", in.rest[0], strings.Join(shells, ", "))
+		}
+		in.rest = in.rest[1:]
+	case cmdRun:
+		if len(in.rest) == 0 {
+			return fmt.Errorf("%s needs the name of a command", cmdRun)
 		}
 		in.rest = in.rest[1:]
 	}

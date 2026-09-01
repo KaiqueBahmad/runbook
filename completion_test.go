@@ -80,20 +80,33 @@ func TestBashCompletionSuggests(t *testing.T) {
 		words []string // the command line, ending with the word being completed
 		want  string
 	}{
-		{"a command", []string{"runbook", ""}, "list completion"},
+		{"a command", []string{"runbook", ""}, "list run completion"},
 		{"a half typed command", []string{"runbook", "l"}, "list"},
-		{"a command after the flag", []string{"runbook", "-f", "Runbookfile", ""}, "list completion"},
+		{"a command after the flag", []string{"runbook", "-f", "Runbookfile", ""}, "list run completion"},
 		{"the shell completion takes", []string{"runbook", "completion", ""}, "bash zsh fish"},
 		{"a half typed shell", []string{"runbook", "completion", "z"}, "zsh"},
 		{"nothing after list", []string{"runbook", "list", ""}, ""},
 		{"nothing after the shell", []string{"runbook", "completion", "bash", ""}, ""},
 		{"the flags", []string{"runbook", "-"}, "-f --file -h --help"},
+		{"the names run takes", []string{"runbook", "run", ""}, "services/api lint"},
+		{"a half typed name", []string{"runbook", "run", "l"}, "lint"},
+		{"nothing after the name", []string{"runbook", "run", "lint", ""}, ""},
 	}
+
+	// The script asks the runbook being completed for the names, so put one on
+	// the PATH that answers.
+	stub := filepath.Join(t.TempDir(), "runbook")
+	if err := os.WriteFile(stub, []byte("#!/bin/sh\necho services/api\necho lint\n"), 0o700); err != nil {
+		t.Fatalf("writing %s: %v", stub, err)
+	}
+	env := append(os.Environ(), "PATH="+filepath.Dir(stub)+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			args := append([]string{"-c", driver, "bash", path}, tt.words...)
-			out, err := exec.Command(bin, args...).CombinedOutput()
+			cmd := exec.Command(bin, args...)
+			cmd.Env = env
+			out, err := cmd.CombinedOutput()
 			if err != nil {
 				t.Fatalf("bash: %v\n%s", err, out)
 			}

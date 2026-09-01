@@ -35,6 +35,8 @@ func TestParseArgs(t *testing.T) {
 		{"list after the flag", []string{"-f", "/etc/Runbookfile", "list"}, cmdList, nil, "/etc/Runbookfile", false},
 		{"list before the flag", []string{"list", "-f", "/etc/Runbookfile"}, cmdList, nil, "/etc/Runbookfile", false},
 		{"completion", []string{"completion", "zsh"}, cmdCompletion, []string{"zsh"}, abs(t, defaultRunbookfile), false},
+		{"run", []string{"run", "services/api"}, cmdRun, []string{"services/api"}, abs(t, defaultRunbookfile), false},
+		{"run with the flag", []string{"run", "api", "-f", "/etc/Runbookfile"}, cmdRun, []string{"api"}, "/etc/Runbookfile", false},
 		{"empty path", []string{"-f", ""}, "", nil, "", true},
 		{"path without the flag", []string{"path/to/other"}, "", nil, "", true},
 		{"flag without a path", []string{"-f"}, "", nil, "", true},
@@ -46,6 +48,8 @@ func TestParseArgs(t *testing.T) {
 		{"completion without a shell", []string{"completion"}, "", nil, "", true},
 		{"completion with an unknown shell", []string{"completion", "csh"}, "", nil, "", true},
 		{"completion with two shells", []string{"completion", "zsh", "fish"}, "", nil, "", true},
+		{"run without a name", []string{"run"}, "", nil, "", true},
+		{"run with two names", []string{"run", "api", "web"}, "", nil, "", true},
 	}
 
 	for _, tt := range tests {
