@@ -22,6 +22,13 @@ app/help:
   dir: bin
   run: ./runbook --help
 
+# Installs the completion for the shell this repository is developed in, using
+# the same build. Writing the script to a file beats putting an eval in .bashrc:
+# bash-completion loads it the first time you complete a runbook command, so no
+# shell pays for it at startup.
+app/install-completion:
+  run: mkdir -p ~/.local/share/bash-completion/completions && ./bin/runbook completion bash > ~/.local/share/bash-completion/completions/runbook
+
 # Slashes group commands into folders in the panel. They are labels only: every
 # command below still runs at the root of the repository.
 go/build:

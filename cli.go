@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -28,6 +29,7 @@ path after -f to open a different file instead.
 
 Commands:
   list         print the name of every command in the Runbookfile
+  completion   print a completion script for bash, zsh or fish
 
 Options:
   -f, --file   path of the Runbookfile to open
@@ -44,7 +46,17 @@ const (
 )
 
 // The commands runbook takes. An empty command opens the panel.
-const cmdList = "list"
+const (
+	cmdList       = "list"
+	cmdCompletion = "completion"
+)
+
+// invocation is what a command line asked for.
+type invocation struct {
+	cmd  string   // the command to carry out, empty when none was given
+	rest []string // the arguments that command was given
+	path string   // full path of the Runbookfile to work on
+}
 
 // parseArgs turns the command line arguments (without the program name) into
 // the command to carry out and the full path of the Runbookfile to work on.
@@ -52,40 +64,45 @@ const cmdList = "list"
 // one in the current directory, and any other path has to come after -f or
 // --file; relative paths are resolved against the current directory. A --help
 // or -h anywhere in the arguments returns errHelpRequested instead.
-func parseArgs(args []string) (string, string, error) {
-	var cmd, path string
+func parseArgs(args []string) (invocation, error) {
+	var in invocation
+	var path string
 
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		switch {
 		case arg == "--help" || arg == "-h":
-			return "", "", errHelpRequested
+			return invocation{}, errHelpRequested
 
 		case arg == fileFlagShort || arg == fileFlag:
 			if path != "" {
-				return "", "", fmt.Errorf("%s is given twice", arg)
+				return invocation{}, fmt.Errorf("%s is given twice", arg)
 			}
 			i++
 			if i == len(args) {
-				return "", "", fmt.Errorf("missing runbookfile path after %s", arg)
+				return invocation{}, fmt.Errorf("missing runbookfile path after %s", arg)
 			}
 			if args[i] == "" {
-				return "", "", errors.New("runbookfile path is empty")
+				return invocation{}, errors.New("runbookfile path is empty")
 			}
 			path = args[i]
 
 		case strings.HasPrefix(arg, "-"):
-			return "", "", fmt.Errorf("unknown flag %q", arg)
+			return invocation{}, fmt.Errorf("unknown flag %q", arg)
 
-		case cmd != "":
-			return "", "", fmt.Errorf("unexpected argument %q", arg)
+		case in.cmd != "":
+			in.rest = append(in.rest, arg)
 
-		case arg == cmdList:
-			cmd = arg
+		case arg == cmdList || arg == cmdCompletion:
+			in.cmd = arg
 
 		default:
-			return "", "", fmt.Errorf("unknown command %q", arg)
+			return invocation{}, fmt.Errorf("unknown command %q", arg)
 		}
+	}
+
+	if err := checkRest(in); err != nil {
+		return invocation{}, err
 	}
 
 	if path == "" {
@@ -93,9 +110,27 @@ func parseArgs(args []string) (string, string, error) {
 	}
 	full, err := filepath.Abs(path)
 	if err != nil {
-		return "", "", fmt.Errorf("resolving %q: %w", path, err)
+		return invocation{}, fmt.Errorf("resolving %q: %w", path, err)
 	}
-	return cmd, full, nil
+	in.path = full
+	return in, nil
+}
+
+// checkRest reports whether a command was given the arguments it takes.
+func checkRest(in invocation) error {
+	if in.cmd == cmdCompletion {
+		switch {
+		case len(in.rest) == 0:
+			return fmt.Errorf("%s needs a shell: %s", cmdCompletion, strings.Join(shells, ", "))
+		case !slices.Contains(shells, in.rest[0]):
+			return fmt.Errorf("unknown shell %q, want %s", in.rest[0], strings.Join(shells, ", "))
+		}
+		in.rest = in.rest[1:]
+	}
+	if len(in.rest) > 0 {
+		return fmt.Errorf("unexpected argument %q", in.rest[0])
+	}
+	return nil
 }
 
 // checkRunbookfile reports whether path is a readable regular file.

@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	cmd, path, err := parseArgs(os.Args[1:])
+	in, err := parseArgs(os.Args[1:])
 	if errors.Is(err, errHelpRequested) {
 		fmt.Println(help)
 		return
@@ -22,32 +22,39 @@ func main() {
 		os.Exit(2)
 	}
 
-	if err := checkRunbookfile(path); err != nil {
+	// completion runs from wherever a shell starts up, so it never looks at
+	// the Runbookfile.
+	if in.cmd == cmdCompletion {
+		fmt.Print(completionScript(in.rest[0]))
+		return
+	}
+
+	if err := checkRunbookfile(in.path); err != nil {
 		fmt.Fprintf(os.Stderr, "runbook: %v\n", err)
 		os.Exit(1)
 	}
 
-	entries, err := readRunbookfile(path)
+	entries, err := readRunbookfile(in.path)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "runbook: %v\n", err)
 		os.Exit(1)
 	}
 
 	// list only reads, so it leaves no .runbook directory behind.
-	if cmd == cmdList {
+	if in.cmd == cmdList {
 		printNames(os.Stdout, entries)
 		return
 	}
 
 	printEntries(os.Stdout, entries)
 
-	dir, err := ensureRunbookDir(path)
+	dir, err := ensureRunbookDir(in.path)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "runbook: %v\n", err)
 		os.Exit(1)
 	}
 
-	if _, err := ensureMetadataFile(dir, path); err != nil {
+	if _, err := ensureMetadataFile(dir, in.path); err != nil {
 		fmt.Fprintf(os.Stderr, "runbook: %v\n", err)
 		os.Exit(1)
 	}
