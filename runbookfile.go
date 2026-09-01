@@ -9,25 +9,29 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"unicode/utf8"
 )
 
 // Entry is one command from the Runbookfile.
 type Entry struct {
-	Name string            // slashes group entries into folders, e.g. "services/api"
-	Run  string            // shell command
-	Dir  string            // optional working directory, relative to the Runbookfile's directory
-	Env  map[string]string // optional extra environment variables, nil if none
+	Name        string            // slashes group entries into folders, e.g. "services/api"
+	Run         string            // shell command
+	Description string            // optional one line summary of what the command does
+	Dir         string            // optional working directory, relative to the Runbookfile's directory
+	Env         map[string]string // optional extra environment variables, nil if none
 }
 
 const (
-	fieldRun = "run"
-	fieldDir = "dir"
-	fieldEnv = "env"
+	fieldRun         = "run"
+	fieldDescription = "description"
+	fieldDir         = "dir"
+	fieldEnv         = "env"
 )
 
 // This function parses the Runbookfile and returns a list of entries.
 // path: name of the command
 //   run: shell command to run
+//   description: optional one line summary of what the command does
 //   dir: optional working directory, relative to the Runbookfile's directory, defaults to Runbookfile's directory
 //   env: optional extra environment variables, nil if none
 //     key: value
@@ -144,6 +148,14 @@ func parseRunbookfile(r io.Reader) ([]Entry, error) {
 				return nil, fmt.Errorf("line %d: %s is empty", n, fieldRun)
 			}
 			current.Run = value
+		case fieldDescription:
+			if current.Description != "" {
+				return nil, fmt.Errorf("line %d: %s is set twice", n, fieldDescription)
+			}
+			if value == "" {
+				return nil, fmt.Errorf("line %d: %s is empty", n, fieldDescription)
+			}
+			current.Description = value
 		case fieldDir:
 			if current.Dir != "" {
 				return nil, fmt.Errorf("line %d: %s is set twice", n, fieldDir)
@@ -226,6 +238,9 @@ func readRunbookfile(path string) ([]Entry, error) {
 func printEntries(w io.Writer, entries []Entry) {
 	for _, entry := range entries {
 		fmt.Fprintf(w, "%s:\n", entry.Name)
+		if entry.Description != "" {
+			fmt.Fprintf(w, "  %s: %s\n", fieldDescription, entry.Description)
+		}
 		fmt.Fprintf(w, "  %s: %s\n", fieldRun, entry.Run)
 		if entry.Dir != "" {
 			fmt.Fprintf(w, "  %s: %s\n", fieldDir, entry.Dir)
@@ -239,10 +254,41 @@ func printEntries(w io.Writer, entries []Entry) {
 	}
 }
 
-// printNames writes one command name per line, in the order the Runbookfile
-// lists them. It is what shell completion reads.
-func printNames(w io.Writer, entries []Entry) {
-	for _, entry := range entries {
-		fmt.Fprintln(w, entry.Name)
+// printNames writes one command per line, in the order the Runbookfile lists
+// them: the name, then its description. A command with no description is the
+// name on its own.
+//
+// Aligned, the descriptions line up in a column for someone reading them. Not
+// aligned, a tab separates the two, which is what shell completion reads: the
+// separator zsh and fish show a description behind, and that bash cuts away.
+func printNames(w io.Writer, entries []Entry, align bool) {
+	width := 0
+	if align {
+		for _, entry := range entries {
+			if entry.Description == "" {
+				continue
+			}
+			width = max(width, utf8.RuneCountInString(entry.Name))
+		}
 	}
+
+	for _, entry := range entries {
+		if entry.Description == "" {
+			fmt.Fprintln(w, entry.Name)
+			continue
+		}
+		if !align {
+			fmt.Fprintf(w, "%s\t%s\n", entry.Name, entry.Description)
+			continue
+		}
+		pad := strings.Repeat(" ", width-utf8.RuneCountInString(entry.Name))
+		fmt.Fprintf(w, "%s%s  %s\n", entry.Name, pad, entry.Description)
+	}
+}
+
+// isTerminal reports whether f is a terminal, rather than a pipe or a file
+// something else will read.
+func isTerminal(f *os.File) bool {
+	info, err := f.Stat()
+	return err == nil && info.Mode()&os.ModeCharDevice != 0
 }

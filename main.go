@@ -43,7 +43,7 @@ func main() {
 
 	// list and run only read, so they leave no .runbook directory behind.
 	if in.cmd == cmdList {
-		printNames(os.Stdout, entries)
+		printNames(os.Stdout, entries, isTerminal(os.Stdout))
 		return
 	}
 

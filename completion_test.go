@@ -96,7 +96,8 @@ func TestBashCompletionSuggests(t *testing.T) {
 	// The script asks the runbook being completed for the names, so put one on
 	// the PATH that answers.
 	stub := filepath.Join(t.TempDir(), "runbook")
-	if err := os.WriteFile(stub, []byte("#!/bin/sh\necho services/api\necho lint\n"), 0o700); err != nil {
+	const answer = "#!/bin/sh\nprintf 'services/api\\tThe Spring backend\\n'\nprintf 'lint\\n'\n"
+	if err := os.WriteFile(stub, []byte(answer), 0o700); err != nil {
 		t.Fatalf("writing %s: %v", stub, err)
 	}
 	env := append(os.Environ(), "PATH="+filepath.Dir(stub)+string(os.PathListSeparator)+os.Getenv("PATH"))

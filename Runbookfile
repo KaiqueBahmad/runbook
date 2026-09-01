@@ -1,56 +1,43 @@
-# Runbook's own commands, written in Runbook's own format.
-#
-# A command is a name on a line of its own, followed by an indented block of
-# fields. Only run is required.
-
-# The build script: compiles into bin/ and opens the window.
 app/start:
+  description: Build into bin/ and open the window
   run: ./run.sh
 
-# env adds variables on top of the ones Runbook was started with. Fyne reads
-# both of these, so this starts the same build in the light theme at double
-# size.
 app/start-light:
+  description: The same build in Fyne's light theme, at double size
   run: ./run.sh
   env:
     FYNE_THEME: light
     FYNE_SCALE: 2
 
-# dir is relative to this file, not to the shell Runbook was started from, so
-# this one runs whatever the last build left in bin/.
 app/help:
+  description: Print the usage text of whatever the last build left in bin/
   dir: bin
   run: ./runbook --help
 
-# Installs the completion for the shell this repository is developed in, using
-# the same build. Writing the script to a file beats putting an eval in .bashrc:
-# bash-completion loads it the first time you complete a runbook command, so no
-# shell pays for it at startup.
 app/install-completion:
+  description: Install the bash completion of the last build for this user
   run: mkdir -p ~/.local/share/bash-completion/completions && ./bin/runbook completion bash > ~/.local/share/bash-completion/completions/runbook
 
-# Slashes group commands into folders in the panel. They are labels only: every
-# command below still runs at the root of the repository.
 go/build:
+  description: Compile the binary into bin/
   run: go build -o bin/runbook .
 
 go/test:
+  description: Run every test
   run: go test ./...
 
 go/vet:
+  description: Report suspicious code
   run: go vet ./...
 
 go/fmt:
+  description: List the files that are not gofmt clean
   run: gofmt -l .
 
 go/tidy:
+  description: Bring go.mod and go.sum back in line with the imports
   run: go mod tidy
 
-# The command is taken as written, colons and all.
 git/log:
+  description: Show the last ten commits, one per line
   run: git log --pretty=format:'%h %s' -10
-
-# A # opens a comment only at the start of a line, so the one below stays part
-# of the command — this counts the comment lines in this very file.
-comments:
-  run: grep -c '^#' Runbookfile

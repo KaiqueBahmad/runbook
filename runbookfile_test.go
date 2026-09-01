@@ -21,11 +21,11 @@ func TestParseRunbookfile(t *testing.T) {
 			want: nil,
 		},
 		{
-			name: "run on its own leaves dir and env unset",
+			name: "run on its own leaves the optional fields unset",
 			in: `api:
   run: npm start
 `,
-			want: []Entry{{Name: "api", Run: "npm start", Dir: "", Env: nil}},
+			want: []Entry{{Name: "api", Run: "npm start", Description: "", Dir: "", Env: nil}},
 		},
 		{
 			name: "several commands",
@@ -40,8 +40,21 @@ lint:
 			},
 		},
 		{
+			name: "description",
+			in: `api:
+  description: The backend, on port 8080
+  run: npm start
+`,
+			want: []Entry{{
+				Name:        "api",
+				Run:         "npm start",
+				Description: "The backend, on port 8080",
+			}},
+		},
+		{
 			name: "every field",
 			in: `api:
+  description: The Spring backend
   dir: services/api
   run: mvn spring-boot:run
   env:
@@ -49,10 +62,11 @@ lint:
     LOG_LEVEL: debug
 `,
 			want: []Entry{{
-				Name: "api",
-				Run:  "mvn spring-boot:run",
-				Dir:  "services/api",
-				Env:  map[string]string{"PORT": "8080", "LOG_LEVEL": "debug"},
+				Name:        "api",
+				Run:         "mvn spring-boot:run",
+				Description: "The Spring backend",
+				Dir:         "services/api",
+				Env:         map[string]string{"PORT": "8080", "LOG_LEVEL": "debug"},
 			}},
 		},
 		{
@@ -172,6 +186,8 @@ func TestParseRunbookfileErrors(t *testing.T) {
 		{"unknown field", "api:\n  runn: npm start\n", `unknown field "runn"`},
 		{"run set twice", "api:\n  run: npm start\n  run: npm run dev\n", "set twice"},
 		{"dir set twice", "api:\n  run: npm start\n  dir: a\n  dir: b\n", "set twice"},
+		{"description set twice", "api:\n  run: x\n  description: a\n  description: b\n", "set twice"},
+		{"empty description", "api:\n  run: x\n  description:\n", "description is empty"},
 		{"env set twice", "api:\n  run: npm start\n  env:\n  env:\n", "set twice"},
 		{"empty run", "api:\n  run:\n", "run is empty"},
 		{"empty dir", "api:\n  run: npm start\n  dir:\n", "dir is empty"},
@@ -242,16 +258,18 @@ func TestReadRunbookfile(t *testing.T) {
 func TestPrintEntries(t *testing.T) {
 	entries := []Entry{
 		{
-			Name: "services/api",
-			Run:  "mvn spring-boot:run",
-			Dir:  "services/api",
-			Env:  map[string]string{"PORT": "8080", "LOG_LEVEL": "debug"},
+			Name:        "services/api",
+			Run:         "mvn spring-boot:run",
+			Description: "The Spring backend",
+			Dir:         "services/api",
+			Env:         map[string]string{"PORT": "8080", "LOG_LEVEL": "debug"},
 		},
 		{Name: "lint", Run: "golangci-lint run"},
 	}
 
 	// The variables are sorted by name, since a map has no order to keep.
 	want := `services/api:
+  description: The Spring backend
   run: mvn spring-boot:run
   dir: services/api
   env:
@@ -282,14 +300,56 @@ func TestRunbookfileExample(t *testing.T) {
 
 func TestPrintNames(t *testing.T) {
 	entries := []Entry{
-		{Name: "services/api", Run: "mvn spring-boot:run"},
+		{Name: "services/api", Run: "mvn spring-boot:run", Description: "The Spring backend"},
+		{Name: "db/seed", Run: "./seed.sh", Description: "Fill the database"},
 		{Name: "lint", Run: "golangci-lint run"},
 	}
 
-	want := "services/api\nlint\n"
+	tests := []struct {
+		name  string
+		align bool
+		want  string
+	}{
+		{
+			// The column is as wide as the longest name that has something to
+			// line up against, and a command with no description is left alone.
+			name:  "aligned",
+			align: true,
+			want: "services/api  The Spring backend\n" +
+				"db/seed       Fill the database\n" +
+				"lint\n",
+		},
+		{
+			name:  "not aligned",
+			align: false,
+			want: "services/api\tThe Spring backend\n" +
+				"db/seed\tFill the database\n" +
+				"lint\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var out bytes.Buffer
+			printNames(&out, entries, tt.align)
+			if out.String() != tt.want {
+				t.Errorf("printNames(align=%v) =\n%q\nwant\n%q", tt.align, out.String(), tt.want)
+			}
+		})
+	}
+}
+
+func TestPrintNamesWidth(t *testing.T) {
+	// The column is measured in characters, not bytes, so an accent does not
+	// push the description of the line below it out of place.
+	entries := []Entry{
+		{Name: "café", Description: "a"},
+		{Name: "abcd", Description: "b"},
+	}
 
 	var out bytes.Buffer
-	printNames(&out, entries)
+	printNames(&out, entries, true)
+	want := "café  a\nabcd  b\n"
 	if out.String() != want {
 		t.Errorf("printNames() = %q, want %q", out.String(), want)
 	}

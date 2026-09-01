@@ -61,11 +61,12 @@ _runbook() {
                     ;;
                 run)
                     # The names come from the Runbookfile being completed for,
-                    # asked of the very runbook being typed. A newline IFS keeps
-                    # names with spaces in one piece.
+                    # asked of the very runbook being typed. bash has nowhere to
+                    # show the description behind the tab, so it is cut off. A
+                    # newline IFS keeps names with spaces in one piece.
                     [[ -n "$file" ]] && opt=(-f "$file")
                     local IFS=$'\n'
-                    COMPREPLY=($(compgen -W "$("${COMP_WORDS[0]}" list "${opt[@]}" 2>/dev/null)" -- "$cur"))
+                    COMPREPLY=($(compgen -W "$("${COMP_WORDS[0]}" list "${opt[@]}" 2>/dev/null | cut -f1)" -- "$cur"))
                     ;;
             esac
             ;;
@@ -102,7 +103,11 @@ _runbook() {
                     (( CURRENT == 2 )) && _values 'shell' bash zsh fish
                     ;;
                 run)
-                    (( CURRENT == 2 )) && compadd -- ${(f)"$($prog list 2>/dev/null)"}
+                    # _describe wants name:description, list gives name<tab>
+                    # description, so the first tab of each line becomes a colon.
+                    local -a names
+                    names=(${${(f)"$($prog list 2>/dev/null)"}/$'\t'/:})
+                    (( CURRENT == 2 )) && _describe 'command' names
                     ;;
             esac
             ;;
@@ -135,7 +140,8 @@ function __runbook_argument_of
     and test "$seen[1]" = "$argv[1]"
 end
 
-# The command names, asked of the very runbook being typed.
+# The command names, asked of the very runbook being typed. Each line is a name
+# and, behind a tab, the description fish shows beside it.
 function __runbook_names
     set -l prog (commandline -opc)[1]
     $prog list 2>/dev/null
