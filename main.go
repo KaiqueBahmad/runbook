@@ -61,7 +61,7 @@ func main() {
 		os.Exit(code)
 	}
 
-	printEntries(os.Stdout, entries)
+	mainCommand(os.Stdout, in.path)
 
 	dir, err := ensureRunbookDir(in.path)
 	if err != nil {

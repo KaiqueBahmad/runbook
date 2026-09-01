@@ -5,9 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"maps"
 	"os"
-	"slices"
 	"strings"
 	"unicode/utf8"
 )
@@ -233,25 +231,14 @@ func readRunbookfile(path string) ([]Entry, error) {
 	return entries, nil
 }
 
-// printEntries writes the commands back out, in the order they were read, so
-// what Runbook understood can be checked against the file.
-func printEntries(w io.Writer, entries []Entry) {
-	for _, entry := range entries {
-		fmt.Fprintf(w, "%s:\n", entry.Name)
-		if entry.Description != "" {
-			fmt.Fprintf(w, "  %s: %s\n", fieldDescription, entry.Description)
-		}
-		fmt.Fprintf(w, "  %s: %s\n", fieldRun, entry.Run)
-		if entry.Dir != "" {
-			fmt.Fprintf(w, "  %s: %s\n", fieldDir, entry.Dir)
-		}
-		if len(entry.Env) > 0 {
-			fmt.Fprintf(w, "  %s:\n", fieldEnv)
-			for _, name := range slices.Sorted(maps.Keys(entry.Env)) {
-				fmt.Fprintf(w, "    %s: %s\n", name, entry.Env[name])
-			}
-		}
+func mainCommand(w io.Writer, runbookfile string) {
+	_, err := readRunbookfile(runbookfile)
+	if err != nil {
+		fmt.Fprintln(w, err)
+		return
 	}
+
+	fmt.Fprintf(w, "parsed %s successfully\n", runbookfile)
 }
 
 // printNames writes one command per line, in the order the Runbookfile lists

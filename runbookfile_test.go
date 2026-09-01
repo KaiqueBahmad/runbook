@@ -255,34 +255,12 @@ func TestReadRunbookfile(t *testing.T) {
 	})
 }
 
-func TestPrintEntries(t *testing.T) {
-	entries := []Entry{
-		{
-			Name:        "services/api",
-			Run:         "mvn spring-boot:run",
-			Description: "The Spring backend",
-			Dir:         "services/api",
-			Env:         map[string]string{"PORT": "8080", "LOG_LEVEL": "debug"},
-		},
-		{Name: "lint", Run: "golangci-lint run"},
-	}
-
-	// The variables are sorted by name, since a map has no order to keep.
-	want := `services/api:
-  description: The Spring backend
-  run: mvn spring-boot:run
-  dir: services/api
-  env:
-    LOG_LEVEL: debug
-    PORT: 8080
-lint:
-  run: golangci-lint run
-`
-
+func TestMainCommand(t *testing.T) {
+	want := "parsed Runbookfile successfully\n"
 	var out bytes.Buffer
-	printEntries(&out, entries)
+	mainCommand(&out, "Runbookfile")
 	if out.String() != want {
-		t.Errorf("printEntries() =\n%s\nwant\n%s", out.String(), want)
+		t.Errorf("mainCommand() = %s, want %s", out.String(), want)
 	}
 }
 
