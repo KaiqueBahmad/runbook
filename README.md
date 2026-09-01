@@ -60,3 +60,30 @@ Nothing starts automatically — you decide what runs and when, whether that's l
 - Not a container runtime or sandbox — everything runs directly on your machine with your normal environment and permissions.
 - Not opinionated about language or framework — if it's a shell command, Runbook can run it, server or script alike.
 - Not a process supervisor for production — no restart policies, no daemonizing, no scheduling. It's a development-time convenience tool.
+
+## Layout
+
+The source is one small binary over a handful of packages, each with a single job:
+
+```
+cmd/runbook/           the entry point, which only hands the arguments over
+internal/cli/          the command line: arguments, help, completion, and carrying the answer out
+internal/runner/       running a command here, starting one in the background, stopping it, status, logs
+internal/runbookfile/  the file format, read into the entries the rest of the program works with
+internal/state/        what Runbook remembers of a started command, so a later stop finds the process
+internal/ipc/          the address a started command's output is broadcast at, and the broadcaster
+internal/workdir/      the .runbook directory beside the Runbookfile, and tidying what is left in it
+```
+
+Everything but the entry point sits under `internal/`, so none of it can be imported from
+outside the module. That's deliberate: the packages are how the program is put together,
+not an API anyone is meant to build on.
+
+To build it:
+
+```
+go build -o bin/runbook ./cmd/runbook
+```
+
+Or run `./run.sh`, which builds into `bin/` and then starts what it built, passing your
+arguments along. `go test ./...` runs the tests.
