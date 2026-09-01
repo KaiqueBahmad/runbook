@@ -154,12 +154,24 @@ func (st state) since() time.Duration {
 // clean without complaint.
 //
 // It is housekeeping, not correctness: every command already treats a missing
-// state file and a dead process the same way. What it catches that they do not
-// is the state of a command that has since been renamed or taken out of the
+// state file and a dead process the same way, and an address with nobody
+// behind it is bound over on the next start. What it catches that they do not
+// is what a command has left behind since it was renamed or taken out of the
 // Runbookfile, which nothing else ever looks at again.
 func sweep(path string) error {
-	dir := stateDir(path)
-	empty, err := sweepDir(dir)
+	if err := sweepUnder(stateDir(path), deadState); err != nil {
+		return err
+	}
+	// The addresses the broadcasters listen at are swept the same way, and are
+	// past when there is nobody behind them any more.
+	return sweepIPC(path)
+}
+
+// sweepUnder clears the files under dir that gone reports are past, and the
+// folders left empty once they are, dir itself included. A directory that was
+// never there sweeps clean without complaint.
+func sweepUnder(dir string, gone func(file string) bool) error {
+	empty, err := sweepDir(dir, gone)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil
 	}
@@ -172,9 +184,21 @@ func sweep(path string) error {
 	return nil
 }
 
-// sweepDir clears the dead state under dir and reports whether anything is left
-// in it afterwards.
-func sweepDir(dir string) (bool, error) {
+// deadState reports whether a state file is one whose process has gone.
+func deadState(file string) bool {
+	if !strings.HasSuffix(file, stateExt) {
+		return false
+	}
+	// A file this Runbook cannot read stays. It may have been written by a
+	// newer one that records more, and removing it would leave the process it
+	// describes running with nobody left who knows its number.
+	st, err := readState(file)
+	return err == nil && !st.alive()
+}
+
+// sweepDir clears what gone reports is past under dir, and reports whether
+// anything is left in it afterwards.
+func sweepDir(dir string, gone func(file string) bool) (bool, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return false, err
@@ -185,7 +209,7 @@ func sweepDir(dir string) (bool, error) {
 		name := filepath.Join(dir, entry.Name())
 
 		if entry.IsDir() {
-			empty, err := sweepDir(name)
+			empty, err := sweepDir(name, gone)
 			if err != nil {
 				return false, err
 			}
@@ -199,16 +223,7 @@ func sweepDir(dir string) (bool, error) {
 			continue
 		}
 
-		if !strings.HasSuffix(entry.Name(), stateExt) {
-			kept++
-			continue
-		}
-
-		// A file this Runbook cannot read stays. It may have been written by a
-		// newer one that records more, and removing it would leave the process
-		// it describes running with nobody left who knows its number.
-		st, err := readState(name)
-		if err != nil || st.alive() {
+		if !gone(name) {
 			kept++
 			continue
 		}

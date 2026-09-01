@@ -30,6 +30,16 @@ func main() {
 		return
 	}
 
+	// broadcast is Runbook talking to itself: start left it holding one end of
+	// a pipe, and all it needs is the address to hand what comes down it to.
+	if in.cmd == cmdBroadcast {
+		if err := broadcast(in.rest[0], os.Stdin); err != nil {
+			fmt.Fprintf(os.Stderr, "runbook: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	if err := checkRunbookfile(in.path); err != nil {
 		fmt.Fprintf(os.Stderr, "runbook: %v\n", err)
 		os.Exit(1)
@@ -41,9 +51,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	// list and run only read, so they leave no .runbook directory behind.
+	// list, logs and run only read, so they leave no .runbook directory
 	if in.cmd == cmdList {
 		printNames(os.Stdout, entries, isTerminal(os.Stdout))
+		return
+	}
+
+	if in.cmd == cmdLogs {
+		if err := logs(in, entries, os.Stdout); err != nil {
+			fmt.Fprintf(os.Stderr, "runbook: %v\n", err)
+			os.Exit(1)
+		}
 		return
 	}
 

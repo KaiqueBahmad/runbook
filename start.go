@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -16,33 +17,68 @@ import (
 // before Runbook stops asking and kills it.
 const grace = 5 * time.Second
 
+// bind is how long the broadcaster has to take up its address before start
+// gives up on it.
+const bind = 2 * time.Second
+
 // startEntry starts a command in the background and records its process id, so
-// that a stop from another terminal can find it again. The command gets a
-// process group of its own: it is what a shell command's own children join, so
-// stopping it can reach the whole tree, and it keeps the command out of the
-// terminal's foreground group, so Ctrl-C here does not reach it.
+// that a stop from another terminal can find it again.
 //
-// Nothing reads what the command writes, so its output goes to the null
-// device: leaving it on the terminal would have it turn up in whatever the
-// person running Runbook does next.
-func startEntry(entry Entry, base, state string) (int, error) {
+// It starts two processes, each in a session of its own: the command, and the
+// broadcaster that carries its output to anyone who asks for it. A session
+// gives the command a process group to lead, which is what a shell command's
+// own children join, so stopping it reaches the whole tree; and it takes both
+// of them off the terminal Runbook was typed at, so a Ctrl-C there ends
+// neither.
+//
+// The two are joined by a pipe. Runbook holds the write end until the command
+// has it too, and then lets go, so that the broadcaster sees the output end
+// exactly when the command does and not before.
+func startEntry(entry Entry, base, state, addr string) (int, error) {
 	if st, err := readState(state); err == nil && st.alive() {
 		return 0, fmt.Errorf("%s is already running (pid %d)", entry.Name, st.PID)
 	} else if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return 0, err
 	}
 
+	r, w, err := os.Pipe()
+	if err != nil {
+		return 0, fmt.Errorf("opening a pipe for %s: %w", entry.Name, err)
+	}
+	caster, trouble, err := startBroadcaster(addr, r)
+	r.Close()
+	if err != nil {
+		w.Close()
+		return 0, err
+	}
+	defer trouble.Close()
+	// From here on the broadcaster ends of its own accord when this is closed,
+	// so every way out below takes it along.
+	defer w.Close()
+
+	// The address is waited for rather than assumed: someone who types logs
+	// straight after start should find the broadcaster already there.
+	if err := waitAddr(addr, bind); err != nil {
+		caster.Process.Kill()
+		caster.Wait()
+		if said := whyNot(trouble); said != "" {
+			return 0, fmt.Errorf("%s: %s", entry.Name, said)
+		}
+		return 0, fmt.Errorf("%s: %w", entry.Name, err)
+	}
+
 	cmd := exec.Command(shell, "-c", entry.Run)
 	cmd.Dir = entryDir(entry, base)
 	cmd.Env = entryEnv(entry)
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.Stdout, cmd.Stderr = w, w
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 
 	if err := cmd.Start(); err != nil {
 		return 0, fmt.Errorf("starting %s: %w", entry.Name, err)
 	}
 	pid := cmd.Process.Pid
 
-	// Setpgid makes the command the leader of its own group, so the group has
+	// Setsid makes the command the leader of its own group, so the group has
 	// the same number as the process.
 	boot, _ := processBoot(pid)
 	if err := writeState(state, stateOf(pid, boot)); err != nil {
@@ -51,6 +87,72 @@ func startEntry(entry Entry, base, state string) (int, error) {
 		return 0, err
 	}
 	return pid, nil
+}
+
+// startBroadcaster starts the broadcaster of one command: another copy of
+// runbook, reading the command's output from in and listening on addr for
+// whoever wants to hear it. It is not for people to type, so it is not among
+// the commands runbook offers.
+//
+// It gets a session of its own as well, so that stopping the command, which
+// signals the command's group, does not reach it before it has passed on the
+// last of what the command said.
+// It gives back a pipe as well as the process. Nothing reads what the
+// broadcaster writes, so its complaints would be lost, and the one that
+// matters is why it could not take up its address: start reads that back to
+// say what went wrong rather than only that something did.
+func startBroadcaster(addr string, in *os.File) (*exec.Cmd, *os.File, error) {
+	self, err := os.Executable()
+	if err != nil {
+		return nil, nil, fmt.Errorf("finding runbook itself: %w", err)
+	}
+	trouble, said, err := os.Pipe()
+	if err != nil {
+		return nil, nil, fmt.Errorf("opening a pipe for the broadcaster: %w", err)
+	}
+	defer said.Close()
+
+	cmd := exec.Command(self, cmdBroadcast, addr)
+	cmd.Stdin = in
+	cmd.Stderr = said
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+
+	if err := cmd.Start(); err != nil {
+		trouble.Close()
+		return nil, nil, fmt.Errorf("starting the broadcaster of %s: %w", addr, err)
+	}
+	return cmd, trouble, nil
+}
+
+// whyNot is what the broadcaster said before it gave up, if anything. It is
+// only ever read once the broadcaster has gone, so the last of it is there and
+// the read ends rather than waiting for more.
+func whyNot(trouble *os.File) string {
+	said, err := io.ReadAll(io.LimitReader(trouble, 4096))
+	if err != nil {
+		return ""
+	}
+	// It is Runbook talking to itself, and it names itself the way it does to
+	// anyone else. The message is on its way into another one that has said so
+	// already.
+	return strings.TrimPrefix(strings.TrimSpace(string(said)), "runbook: ")
+}
+
+// waitAddr waits for the broadcaster to take up its address, by connecting to
+// it. A broadcaster that never gets there has left the command with nothing to
+// write to, so start says so rather than carrying on.
+func waitAddr(addr string, wait time.Duration) error {
+	const step = 10 * time.Millisecond
+	for waited := time.Duration(0); ; waited += step {
+		if conn, err := dialIPC(addr); err == nil {
+			conn.Close()
+			return nil
+		}
+		if waited >= wait {
+			return fmt.Errorf("the broadcaster of its output never came up at %s", addr)
+		}
+		time.Sleep(step)
+	}
 }
 
 func stateOf(pid int, boot string) state {
@@ -113,7 +215,7 @@ func start(in invocation, entries []Entry, w io.Writer) error {
 		return err
 	}
 
-	pid, err := startEntry(entry, filepath.Dir(in.path), stateFile(in.path, entry.Name))
+	pid, err := startEntry(entry, filepath.Dir(in.path), stateFile(in.path, entry.Name), ipcAddr(in.path, entry.Name))
 	if err != nil {
 		return err
 	}

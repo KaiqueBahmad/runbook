@@ -18,7 +18,7 @@ func TestStatusOf(t *testing.T) {
 	}
 
 	// One running, one never started, and one whose process is long gone.
-	if _, err := startEntry(entries[0], project, stateFile(path, "web/server")); err != nil {
+	if _, err := startEntry(entries[0], project, stateFile(path, "web/server"), ipcAddr(path, "web/server")); err != nil {
 		t.Fatalf("startEntry(): %v", err)
 	}
 	st, err := readState(stateFile(path, "web/server"))

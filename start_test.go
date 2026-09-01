@@ -14,13 +14,16 @@ import (
 // directory and its state file, with the command stopped again when the test
 // ends. A command that has to say when it is ready can touch "ready" in the
 // directory, which waitFor watches.
+//
+// The broadcaster it starts alongside is this very test binary, which TestMain
+// sends to broadcast when it is asked for it.
 func startTest(t *testing.T, run string) (state, string, string) {
 	t.Helper()
 
 	base := t.TempDir()
 	stateFile := filepath.Join(base, ".runbook", "state", "api.pid")
 
-	if _, err := startEntry(Entry{Name: "api", Run: run}, base, stateFile); err != nil {
+	if _, err := startEntry(Entry{Name: "api", Run: run}, base, stateFile, testAddr(base)); err != nil {
 		t.Fatalf("startEntry(): %v", err)
 	}
 	st, err := readState(stateFile)
@@ -52,7 +55,8 @@ func TestStartEntry(t *testing.T) {
 	t.Run("a command already running is left alone", func(t *testing.T) {
 		st, stateFile, _ := startTest(t, "sleep 30")
 
-		_, err := startEntry(Entry{Name: "api", Run: "sleep 30"}, t.TempDir(), stateFile)
+		base := t.TempDir()
+		_, err := startEntry(Entry{Name: "api", Run: "sleep 30"}, base, stateFile, testAddr(base))
 		if err == nil {
 			t.Fatal("startEntry() error = nil, want an error")
 		}
@@ -68,13 +72,13 @@ func TestStartEntry(t *testing.T) {
 		base := t.TempDir()
 		stateFile := filepath.Join(base, "api.pid")
 
-		if _, err := startEntry(Entry{Name: "api", Run: "true"}, base, stateFile); err != nil {
+		if _, err := startEntry(Entry{Name: "api", Run: "true"}, base, stateFile, testAddr(base)); err != nil {
 			t.Fatalf("startEntry(): %v", err)
 		}
 		st, _ := readState(stateFile)
 		waitFor(t, func() bool { return !st.alive() })
 
-		if _, err := startEntry(Entry{Name: "api", Run: "sleep 30"}, base, stateFile); err != nil {
+		if _, err := startEntry(Entry{Name: "api", Run: "sleep 30"}, base, stateFile, testAddr(base)); err != nil {
 			t.Errorf("startEntry() on a finished command: %v", err)
 		}
 		st, _ = readState(stateFile)

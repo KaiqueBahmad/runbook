@@ -30,9 +30,10 @@ path after -f to open a different file instead.
 Commands:
   list         print the name of every command in the Runbookfile
   run <name>   run one of them in this terminal, and exit with its status
-  start <name> run one in the background, its output going to a log file
+  start <name> run one in the background, where its output is broadcast
   stop <name>  end a command that was started
   status       show which commands are running, and at which process id
+  logs <name>  listen to what a started command writes, from now on
   completion   print a completion script for bash, zsh or fish
 
 Options:
@@ -56,14 +57,21 @@ const (
 	cmdStart      = "start"
 	cmdStop       = "stop"
 	cmdStatus     = "status"
+	cmdLogs       = "logs"
 	cmdCompletion = "completion"
 )
 
-// commands is every command runbook answers to.
-var commands = []string{cmdList, cmdRun, cmdStart, cmdStop, cmdStatus, cmdCompletion}
+// cmdBroadcast carries the output of a started command to whoever is listening
+// to it. Runbook starts it itself, one per started command
+// Left of the list below, the help and the completion scripts: it takes an address
+// rather than a command name, and there is nothing there for a person to do.
+const cmdBroadcast = "broadcast"
+
+// commands is every command runbook offers.
+var commands = []string{cmdList, cmdRun, cmdStart, cmdStop, cmdStatus, cmdLogs, cmdCompletion}
 
 // named are the commands that take the name of a command in the Runbookfile.
-var named = []string{cmdRun, cmdStart, cmdStop}
+var named = []string{cmdRun, cmdStart, cmdStop, cmdLogs}
 
 // invocation is what a command line asked for.
 type invocation struct {
@@ -107,7 +115,7 @@ func parseArgs(args []string) (invocation, error) {
 		case in.cmd != "":
 			in.rest = append(in.rest, arg)
 
-		case slices.Contains(commands, arg):
+		case slices.Contains(commands, arg) || arg == cmdBroadcast:
 			in.cmd = arg
 
 		default:
@@ -139,6 +147,11 @@ func checkRest(in invocation) error {
 			return fmt.Errorf("%s needs a shell: %s", cmdCompletion, strings.Join(shells, ", "))
 		case !slices.Contains(shells, in.rest[0]):
 			return fmt.Errorf("unknown shell %q, want %s", in.rest[0], strings.Join(shells, ", "))
+		}
+		in.rest = in.rest[1:]
+	case cmdBroadcast:
+		if len(in.rest) == 0 {
+			return fmt.Errorf("%s needs an address to listen on", cmdBroadcast)
 		}
 		in.rest = in.rest[1:]
 	default:

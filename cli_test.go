@@ -40,6 +40,8 @@ func TestParseArgs(t *testing.T) {
 		{"start", []string{"start", "services/api"}, cmdStart, []string{"services/api"}, abs(t, defaultRunbookfile), false},
 		{"stop", []string{"stop", "services/api"}, cmdStop, []string{"services/api"}, abs(t, defaultRunbookfile), false},
 		{"status", []string{"status"}, cmdStatus, nil, abs(t, defaultRunbookfile), false},
+		{"logs", []string{"logs", "services/api"}, cmdLogs, []string{"services/api"}, abs(t, defaultRunbookfile), false},
+		{"broadcast takes an address", []string{"broadcast", "/tmp/api.sock"}, cmdBroadcast, []string{"/tmp/api.sock"}, abs(t, defaultRunbookfile), false},
 		{"empty path", []string{"-f", ""}, "", nil, "", true},
 		{"path without the flag", []string{"path/to/other"}, "", nil, "", true},
 		{"flag without a path", []string{"-f"}, "", nil, "", true},
@@ -55,6 +57,9 @@ func TestParseArgs(t *testing.T) {
 		{"run with two names", []string{"run", "api", "web"}, "", nil, "", true},
 		{"start without a name", []string{"start"}, "", nil, "", true},
 		{"stop without a name", []string{"stop"}, "", nil, "", true},
+		{"logs without a name", []string{"logs"}, "", nil, "", true},
+		{"logs with two names", []string{"logs", "api", "web"}, "", nil, "", true},
+		{"broadcast without an address", []string{"broadcast"}, "", nil, "", true},
 		{"status with a name", []string{"status", "api"}, "", nil, "", true},
 	}
 
