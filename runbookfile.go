@@ -208,6 +208,10 @@ func checkName(name string) error {
 		if trimmed == "" {
 			return fmt.Errorf("%q has an empty folder", name)
 		}
+		// A name becomes a path under .runbook, so it may not climb out of it.
+		if trimmed == "." || trimmed == ".." {
+			return fmt.Errorf("%q has a folder named %q", name, trimmed)
+		}
 		if trimmed != folder {
 			return fmt.Errorf("%q has spaces around %q", name, trimmed)
 		}

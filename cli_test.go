@@ -37,6 +37,9 @@ func TestParseArgs(t *testing.T) {
 		{"completion", []string{"completion", "zsh"}, cmdCompletion, []string{"zsh"}, abs(t, defaultRunbookfile), false},
 		{"run", []string{"run", "services/api"}, cmdRun, []string{"services/api"}, abs(t, defaultRunbookfile), false},
 		{"run with the flag", []string{"run", "api", "-f", "/etc/Runbookfile"}, cmdRun, []string{"api"}, "/etc/Runbookfile", false},
+		{"start", []string{"start", "services/api"}, cmdStart, []string{"services/api"}, abs(t, defaultRunbookfile), false},
+		{"stop", []string{"stop", "services/api"}, cmdStop, []string{"services/api"}, abs(t, defaultRunbookfile), false},
+		{"status", []string{"status"}, cmdStatus, nil, abs(t, defaultRunbookfile), false},
 		{"empty path", []string{"-f", ""}, "", nil, "", true},
 		{"path without the flag", []string{"path/to/other"}, "", nil, "", true},
 		{"flag without a path", []string{"-f"}, "", nil, "", true},
@@ -50,6 +53,9 @@ func TestParseArgs(t *testing.T) {
 		{"completion with two shells", []string{"completion", "zsh", "fish"}, "", nil, "", true},
 		{"run without a name", []string{"run"}, "", nil, "", true},
 		{"run with two names", []string{"run", "api", "web"}, "", nil, "", true},
+		{"start without a name", []string{"start"}, "", nil, "", true},
+		{"stop without a name", []string{"stop"}, "", nil, "", true},
+		{"status with a name", []string{"status", "api"}, "", nil, "", true},
 	}
 
 	for _, tt := range tests {
@@ -204,63 +210,6 @@ func TestEnsureRunbookDir(t *testing.T) {
 
 		if _, err := ensureRunbookDir(filepath.Join(project, "Runbookfile")); err == nil {
 			t.Fatal("ensureRunbookDir() error = nil, want an error")
-		}
-	})
-}
-
-func TestEnsureMetadataFile(t *testing.T) {
-	t.Run("creates a file named after the runbookfile", func(t *testing.T) {
-		project := t.TempDir()
-		dir := filepath.Join(project, runbookDirName)
-		if err := os.Mkdir(dir, 0o700); err != nil {
-			t.Fatalf("creating %s: %v", dir, err)
-		}
-
-		metadata, err := ensureMetadataFile(dir, filepath.Join(project, "other-runbookfile"))
-		if err != nil {
-			t.Fatalf("ensureMetadataFile(): %v", err)
-		}
-		want := filepath.Join(dir, "other-runbookfile.metadata")
-		if metadata != want {
-			t.Errorf("ensureMetadataFile() = %q, want %q", metadata, want)
-		}
-		got, err := os.ReadFile(metadata)
-		if err != nil {
-			t.Fatalf("reading %s: %v", metadata, err)
-		}
-		if len(got) != 0 {
-			t.Errorf("%s = %q, want it empty", metadata, got)
-		}
-	})
-
-	t.Run("existing metadata is kept", func(t *testing.T) {
-		project := t.TempDir()
-		dir := filepath.Join(project, runbookDirName)
-		if err := os.Mkdir(dir, 0o700); err != nil {
-			t.Fatalf("creating %s: %v", dir, err)
-		}
-		metadata := filepath.Join(dir, "Runbookfile"+metadataExt)
-		if err := os.WriteFile(metadata, []byte("api: stopped\n"), 0o600); err != nil {
-			t.Fatalf("writing %s: %v", metadata, err)
-		}
-
-		if _, err := ensureMetadataFile(dir, filepath.Join(project, "Runbookfile")); err != nil {
-			t.Fatalf("ensureMetadataFile(): %v", err)
-		}
-		got, err := os.ReadFile(metadata)
-		if err != nil {
-			t.Fatalf("reading %s: %v", metadata, err)
-		}
-		if string(got) != "api: stopped\n" {
-			t.Errorf("%s = %q, want it left alone", metadata, got)
-		}
-	})
-
-	t.Run("missing directory", func(t *testing.T) {
-		project := t.TempDir()
-
-		if _, err := ensureMetadataFile(filepath.Join(project, runbookDirName), filepath.Join(project, "Runbookfile")); err == nil {
-			t.Fatal("ensureMetadataFile() error = nil, want an error")
 		}
 	})
 }

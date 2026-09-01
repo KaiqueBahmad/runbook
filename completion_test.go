@@ -80,9 +80,9 @@ func TestBashCompletionSuggests(t *testing.T) {
 		words []string // the command line, ending with the word being completed
 		want  string
 	}{
-		{"a command", []string{"runbook", ""}, "list run completion"},
+		{"a command", []string{"runbook", ""}, "list run start stop status completion"},
 		{"a half typed command", []string{"runbook", "l"}, "list"},
-		{"a command after the flag", []string{"runbook", "-f", "Runbookfile", ""}, "list run completion"},
+		{"a command after the flag", []string{"runbook", "-f", "Runbookfile", ""}, "list run start stop status completion"},
 		{"the shell completion takes", []string{"runbook", "completion", ""}, "bash zsh fish"},
 		{"a half typed shell", []string{"runbook", "completion", "z"}, "zsh"},
 		{"nothing after list", []string{"runbook", "list", ""}, ""},
@@ -91,6 +91,8 @@ func TestBashCompletionSuggests(t *testing.T) {
 		{"the names run takes", []string{"runbook", "run", ""}, "services/api lint"},
 		{"a half typed name", []string{"runbook", "run", "l"}, "lint"},
 		{"nothing after the name", []string{"runbook", "run", "lint", ""}, ""},
+		{"the names start takes", []string{"runbook", "start", ""}, "services/api lint"},
+		{"the names stop takes", []string{"runbook", "stop", ""}, "services/api lint"},
 	}
 
 	// The script asks the runbook being completed for the names, so put one on

@@ -41,3 +41,7 @@ go/tidy:
 git/log:
   description: Show the last ten commits, one per line
   run: git log --pretty=format:'%h %s' -10
+
+demo/sleep:
+  description: Sleep for twenty seconds, to try start and stop against
+  run: sleep 20

@@ -30,6 +30,9 @@ path after -f to open a different file instead.
 Commands:
   list         print the name of every command in the Runbookfile
   run <name>   run one of them in this terminal, and exit with its status
+  start <name> run one in the background, its output going to a log file
+  stop <name>  end a command that was started
+  status       show which commands are running, and at which process id
   completion   print a completion script for bash, zsh or fish
 
 Options:
@@ -50,11 +53,17 @@ const (
 const (
 	cmdList       = "list"
 	cmdRun        = "run"
+	cmdStart      = "start"
+	cmdStop       = "stop"
+	cmdStatus     = "status"
 	cmdCompletion = "completion"
 )
 
 // commands is every command runbook answers to.
-var commands = []string{cmdList, cmdRun, cmdCompletion}
+var commands = []string{cmdList, cmdRun, cmdStart, cmdStop, cmdStatus, cmdCompletion}
+
+// named are the commands that take the name of a command in the Runbookfile.
+var named = []string{cmdRun, cmdStart, cmdStop}
 
 // invocation is what a command line asked for.
 type invocation struct {
@@ -132,11 +141,13 @@ func checkRest(in invocation) error {
 			return fmt.Errorf("unknown shell %q, want %s", in.rest[0], strings.Join(shells, ", "))
 		}
 		in.rest = in.rest[1:]
-	case cmdRun:
-		if len(in.rest) == 0 {
-			return fmt.Errorf("%s needs the name of a command", cmdRun)
+	default:
+		if slices.Contains(named, in.cmd) {
+			if len(in.rest) == 0 {
+				return fmt.Errorf("%s needs the name of a command", in.cmd)
+			}
+			in.rest = in.rest[1:]
 		}
-		in.rest = in.rest[1:]
 	}
 	if len(in.rest) > 0 {
 		return fmt.Errorf("unexpected argument %q", in.rest[0])
@@ -190,23 +201,4 @@ func ensureRunbookDir(path string) (string, error) {
 		return "", err
 	}
 	return dir, nil
-}
-
-// metadataExt is appended to the Runbookfile's name for the file where Runbook
-// keeps what it knows about that Runbookfile.
-const metadataExt = ".metadata"
-
-// ensureMetadataFile returns the path of the metadata file inside dir for the
-// Runbookfile at path, creating it empty if it does not exist yet.
-func ensureMetadataFile(dir, path string) (string, error) {
-	metadata := filepath.Join(dir, filepath.Base(path)+metadataExt)
-
-	f, err := os.OpenFile(metadata, os.O_RDONLY|os.O_CREATE, 0o600)
-	if err != nil {
-		return "", fmt.Errorf("creating %s: %w", metadata, err)
-	}
-	if err := f.Close(); err != nil {
-		return "", fmt.Errorf("closing %s: %w", metadata, err)
-	}
-	return metadata, nil
 }

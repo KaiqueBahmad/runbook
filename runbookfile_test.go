@@ -176,6 +176,8 @@ func TestParseRunbookfileErrors(t *testing.T) {
 		{"empty name", ":\n  run: npm start\n", "name is empty"},
 		{"empty folder", "services//api:\n  run: npm start\n", "empty folder"},
 		{"blank folder", "services/ /api:\n  run: npm start\n", "empty folder"},
+		{"a dot folder", "./api:\n  run: npm start\n", `folder named "."`},
+		{"a climbing folder", "../../etc/api:\n  run: npm start\n", `folder named ".."`},
 		{"space before a folder", "services/ api:\n  run: npm start\n", "spaces around"},
 		{"space after a folder", "services /api:\n  run: npm start\n", "spaces around"},
 		{"space before the colon", "api :\n  run: npm start\n", "spaces around"},

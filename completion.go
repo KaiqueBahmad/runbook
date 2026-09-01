@@ -52,14 +52,14 @@ _runbook() {
 
     case "${#seen[@]}" in
         0)
-            COMPREPLY=($(compgen -W 'list run completion' -- "$cur"))
+            COMPREPLY=($(compgen -W 'list run start stop status completion' -- "$cur"))
             ;;
         1)
             case "${seen[0]}" in
                 completion)
                     COMPREPLY=($(compgen -W 'bash zsh fish' -- "$cur"))
                     ;;
-                run)
+                run|start|stop)
                     # The names come from the Runbookfile being completed for,
                     # asked of the very runbook being typed. bash has nowhere to
                     # show the description behind the tab, so it is cut off. A
@@ -82,6 +82,9 @@ _runbook() {
     commands=(
         'list:print the name of every command in the Runbookfile'
         'run:run one command in this terminal'
+        'start:run one command in the background'
+        'stop:end a command that was started'
+        'status:show which commands are running'
         'completion:print a completion script for bash, zsh or fish'
     )
 
@@ -102,7 +105,7 @@ _runbook() {
                 completion)
                     (( CURRENT == 2 )) && _values 'shell' bash zsh fish
                     ;;
-                run)
+                run|start|stop)
                     # _describe wants name:description, list gives name<tab>
                     # description, so the first tab of each line becomes a colon.
                     local -a names
@@ -133,11 +136,11 @@ function __runbook_seen
     end
 end
 
-# True while the argument of the given command is being typed.
+# True while the argument of one of the given commands is being typed.
 function __runbook_argument_of
     set -l seen (__runbook_seen)
     test (count $seen) -eq 1
-    and test "$seen[1]" = "$argv[1]"
+    and contains -- "$seen[1]" $argv
 end
 
 # The command names, asked of the very runbook being typed. Each line is a name
@@ -154,10 +157,16 @@ complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a list \
     -d 'print the name of every command in the Runbookfile'
 complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a run \
     -d 'run one command in this terminal'
+complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a start \
+    -d 'run one command in the background'
+complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a stop \
+    -d 'end a command that was started'
+complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a status \
+    -d 'show which commands are running'
 complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a completion \
     -d 'print a completion script for bash, zsh or fish'
 complete -c runbook -n '__runbook_argument_of completion' \
     -a 'bash zsh fish' -d shell
-complete -c runbook -n '__runbook_argument_of run' \
+complete -c runbook -n '__runbook_argument_of run start stop' \
     -a '(__runbook_names)' -d command
 `

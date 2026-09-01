@@ -47,6 +47,38 @@ func main() {
 		return
 	}
 
+	// The commands that work with what is running forget what has ended since.
+	// list is left out: shell completion calls it on every tab, and it is the
+	// one command that writes nothing.
+	if in.cmd == cmdStatus || in.cmd == cmdStart || in.cmd == cmdStop {
+		if err := sweep(in.path); err != nil {
+			// Housekeeping must not stand between someone and their process.
+			fmt.Fprintf(os.Stderr, "runbook: could not tidy up: %v\n", err)
+		}
+	}
+
+	if in.cmd == cmdStatus {
+		found, err := statusOf(in.path, entries)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "runbook: %v\n", err)
+			os.Exit(1)
+		}
+		printStatus(os.Stdout, found, isTerminal(os.Stdout))
+		return
+	}
+
+	if in.cmd == cmdStart || in.cmd == cmdStop {
+		act := start
+		if in.cmd == cmdStop {
+			act = stop
+		}
+		if err := act(in, entries, os.Stdout); err != nil {
+			fmt.Fprintf(os.Stderr, "runbook: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	if in.cmd == cmdRun {
 		entry, err := findEntry(entries, in.rest[0])
 		if err != nil {
@@ -63,13 +95,7 @@ func main() {
 
 	mainCommand(os.Stdout, in.path)
 
-	dir, err := ensureRunbookDir(in.path)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "runbook: %v\n", err)
-		os.Exit(1)
-	}
-
-	if _, err := ensureMetadataFile(dir, in.path); err != nil {
+	if _, err := ensureRunbookDir(in.path); err != nil {
 		fmt.Fprintf(os.Stderr, "runbook: %v\n", err)
 		os.Exit(1)
 	}
