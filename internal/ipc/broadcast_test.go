@@ -1,8 +1,7 @@
-package main
+package ipc
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"net"
 	"os"
@@ -11,20 +10,6 @@ import (
 	"testing"
 	"time"
 )
-
-// TestMain sends the test binary to broadcast when it is started as one, which
-// is what startEntry does: it starts another copy of runbook to carry a
-// command's output, and under test the copy at hand is this binary.
-func TestMain(m *testing.M) {
-	if len(os.Args) > 2 && os.Args[1] == cmdBroadcast {
-		if err := broadcast(os.Args[2], os.Stdin); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		os.Exit(0)
-	}
-	os.Exit(m.Run())
-}
 
 // testAddr is an address to broadcast on, kept short: a unix socket address is
 // a path, and the kernel takes about a hundred characters of it.
@@ -38,9 +23,9 @@ func testAddr(base string) string {
 func serveTest(t *testing.T, addr string) (*os.File, *broadcaster) {
 	t.Helper()
 
-	l, err := listenIPC(addr)
+	l, err := Listen(addr)
 	if err != nil {
-		t.Fatalf("listenIPC(%q): %v", addr, err)
+		t.Fatalf("Listen(%q): %v", addr, err)
 	}
 	r, w, err := os.Pipe()
 	if err != nil {
@@ -72,9 +57,9 @@ func listeners(b *broadcaster) int {
 func listen(t *testing.T, addr string) <-chan string {
 	t.Helper()
 
-	conn, err := dialIPC(addr)
+	conn, err := Dial(addr)
 	if err != nil {
-		t.Fatalf("dialIPC(%q): %v", addr, err)
+		t.Fatalf("Dial(%q): %v", addr, err)
 	}
 	t.Cleanup(func() { conn.Close() })
 
@@ -113,9 +98,9 @@ func TestBroadcast(t *testing.T) {
 		// The first listener is there to say when the broadcaster has taken the
 		// output in: once it has heard something, that something is past, and a
 		// listener connecting afterwards has missed it for good.
-		first, err := dialIPC(addr)
+		first, err := Dial(addr)
 		if err != nil {
-			t.Fatalf("dialIPC(%q): %v", addr, err)
+			t.Fatalf("Dial(%q): %v", addr, err)
 		}
 		defer first.Close()
 		waitFor(t, func() bool { return listeners(b) == 1 })
@@ -197,31 +182,26 @@ func TestBroadcast(t *testing.T) {
 	})
 
 	t.Run("connecting to a command that is not running", func(t *testing.T) {
-		if _, err := dialIPC(testAddr(t.TempDir())); err == nil {
-			t.Error("dialIPC() error = nil, want it to fail where nothing is listening")
+		if _, err := Dial(testAddr(t.TempDir())); err == nil {
+			t.Error("Dial() error = nil, want it to fail where nothing is listening")
 		}
 	})
 }
 
-// TestStartEntryBroadcasts is the whole of it: start puts a command and a
-// broadcaster of its own behind an address, and what the command writes comes
-// back out of it.
-func TestStartEntryBroadcasts(t *testing.T) {
-	_, _, base := startTest(t, "while true; do echo tick; sleep 0.05; done")
+// waitFor gives a condition a couple of seconds to come true, for the moments
+// where the other side of a connection has to get somewhere first.
+func waitFor(t *testing.T, done func() bool) {
+	t.Helper()
+	for range 100 {
+		if done() {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatal("waited two seconds and it never happened")
+}
 
-	conn, err := dialIPC(testAddr(base))
-	if err != nil {
-		t.Fatalf("dialIPC(): %v", err)
-	}
-	defer conn.Close()
-
-	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
-	buf := make([]byte, 64)
-	n, err := conn.Read(buf)
-	if err != nil {
-		t.Fatalf("reading what the command wrote: %v", err)
-	}
-	if got := string(buf[:n]); !strings.Contains(got, "tick") {
-		t.Errorf("the command was heard saying %q, want it to hold %q", got, "tick")
-	}
+func exists(file string) bool {
+	_, err := os.Stat(file)
+	return err == nil
 }

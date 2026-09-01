@@ -1,10 +1,13 @@
-package main
+// Package runbookfile reads the Runbookfile: the file a project lists its
+// commands in, and the entries that come out of it.
+package runbookfile
 
 import (
 	"bufio"
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"strings"
 	"unicode/utf8"
@@ -26,23 +29,26 @@ const (
 	fieldEnv         = "env"
 )
 
-// This function parses the Runbookfile and returns a list of entries.
-// path: name of the command
-//   run: shell command to run
-//   description: optional one line summary of what the command does
-//   dir: optional working directory, relative to the Runbookfile's directory, defaults to Runbookfile's directory
-//   env: optional extra environment variables, nil if none
-//     key: value
+// Parse reads a Runbookfile and returns the commands it lists. A command is a
+// name, and under it the fields it is made of:
 //
-// Example Runbookfile
+//	name:                the name of the command, slashes group it into folders
+//	  run:               the shell command to run
+//	  description:       optional one line summary of what it does
+//	  dir:               optional working directory, relative to the
+//	                     Runbookfile's own, and defaulting to it
+//	  env:               optional extra environment variables
+//	    KEY: value
 //
-// services/api:
-//   run: go run main.go
-//   dir: ./api
-//   env:
-//     PORT: 8080
-//     DATABASE_URL: postgres://user:password@localhost:5432/db
-func parseRunbookfile(r io.Reader) ([]Entry, error) {
+// For example:
+//
+//	services/api:
+//	  run: go run main.go
+//	  dir: ./api
+//	  env:
+//	    PORT: 8080
+//	    DATABASE_URL: postgres://user:password@localhost:5432/db
+func Parse(r io.Reader) ([]Entry, error) {
 	var (
 		entries []Entry
 		lines   = map[string]int{} // command name -> line it was opened on
@@ -221,38 +227,57 @@ func checkName(name string) error {
 
 // readRunbookfile parses the Runbookfile at path. Parse errors carry the file
 // name in front of the line they come from.
-func readRunbookfile(path string) ([]Entry, error) {
+// Find looks up a command by the name a Runbookfile gave it.
+func Find(entries []Entry, name string) (Entry, error) {
+	for _, entry := range entries {
+		if entry.Name == name {
+			return entry, nil
+		}
+	}
+	return Entry{}, fmt.Errorf("no command named %q, run 'runbook list' to see them", name)
+}
+
+// Check reports whether path is a readable regular file.
+func Check(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return fmt.Errorf("no runbookfile at %s", path)
+		}
+		return err
+	}
+	if info.IsDir() {
+		return fmt.Errorf("%s is a directory, not a runbookfile", path)
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("%s is not a regular file", path)
+	}
+	return nil
+}
+
+// Read opens the Runbookfile at path and parses it.
+func Read(path string) ([]Entry, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
 
-	entries, err := parseRunbookfile(f)
+	entries, err := Parse(f)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
 	return entries, nil
 }
 
-func mainCommand(w io.Writer, runbookfile string) {
-	_, err := readRunbookfile(runbookfile)
-	if err != nil {
-		fmt.Fprintln(w, err)
-		return
-	}
-
-	fmt.Fprintf(w, "parsed %s successfully\n", runbookfile)
-}
-
-// printNames writes one command per line, in the order the Runbookfile lists
+// PrintNames writes one command per line, in the order the Runbookfile lists
 // them: the name, then its description. A command with no description is the
 // name on its own.
 //
 // Aligned, the descriptions line up in a column for someone reading them. Not
 // aligned, a tab separates the two, which is what shell completion reads: the
 // separator zsh and fish show a description behind, and that bash cuts away.
-func printNames(w io.Writer, entries []Entry, align bool) {
+func PrintNames(w io.Writer, entries []Entry, align bool) {
 	width := 0
 	if align {
 		for _, entry := range entries {
@@ -275,11 +300,4 @@ func printNames(w io.Writer, entries []Entry, align bool) {
 		pad := strings.Repeat(" ", width-utf8.RuneCountInString(entry.Name))
 		fmt.Fprintf(w, "%s%s  %s\n", entry.Name, pad, entry.Description)
 	}
-}
-
-// isTerminal reports whether f is a terminal, rather than a pipe or a file
-// something else will read.
-func isTerminal(f *os.File) bool {
-	info, err := f.Stat()
-	return err == nil && info.Mode()&os.ModeCharDevice != 0
 }

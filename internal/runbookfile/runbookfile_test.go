@@ -1,4 +1,4 @@
-package main
+package runbookfile
 
 import (
 	"bytes"
@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestParseRunbookfile(t *testing.T) {
+func TestParse(t *testing.T) {
 	tests := []struct {
 		name string
 		in   string
@@ -155,18 +155,18 @@ web:
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseRunbookfile(strings.NewReader(tt.in))
+			got, err := Parse(strings.NewReader(tt.in))
 			if err != nil {
-				t.Fatalf("parseRunbookfile(): %v", err)
+				t.Fatalf("Parse(): %v", err)
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("parseRunbookfile() = %+v, want %+v", got, tt.want)
+				t.Errorf("Parse() = %+v, want %+v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestParseRunbookfileErrors(t *testing.T) {
+func TestParseErrors(t *testing.T) {
 	tests := []struct {
 		name string
 		in   string
@@ -203,18 +203,18 @@ func TestParseRunbookfileErrors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseRunbookfile(strings.NewReader(tt.in))
+			got, err := Parse(strings.NewReader(tt.in))
 			if err == nil {
-				t.Fatalf("parseRunbookfile() = %+v, want an error", got)
+				t.Fatalf("Parse() = %+v, want an error", got)
 			}
 			if !strings.Contains(err.Error(), tt.want) {
-				t.Errorf("parseRunbookfile() error = %v, want it to mention %q", err, tt.want)
+				t.Errorf("Parse() error = %v, want it to mention %q", err, tt.want)
 			}
 		})
 	}
 }
 
-func TestReadRunbookfile(t *testing.T) {
+func TestRead(t *testing.T) {
 	dir := t.TempDir()
 	write := func(t *testing.T, name, content string) string {
 		t.Helper()
@@ -228,50 +228,68 @@ func TestReadRunbookfile(t *testing.T) {
 	t.Run("reads the commands", func(t *testing.T) {
 		path := write(t, "Runbookfile", "api:\n  run: npm start\n")
 
-		got, err := readRunbookfile(path)
+		got, err := Read(path)
 		if err != nil {
-			t.Fatalf("readRunbookfile(): %v", err)
+			t.Fatalf("Read(): %v", err)
 		}
 		want := []Entry{{Name: "api", Run: "npm start"}}
 		if !reflect.DeepEqual(got, want) {
-			t.Errorf("readRunbookfile() = %+v, want %+v", got, want)
+			t.Errorf("Read() = %+v, want %+v", got, want)
 		}
 	})
 
 	t.Run("parse errors name the file", func(t *testing.T) {
 		path := write(t, "Broken", "api:\n  dir: services/api\n")
 
-		_, err := readRunbookfile(path)
+		_, err := Read(path)
 		if err == nil {
-			t.Fatal("readRunbookfile() error = nil, want an error")
+			t.Fatal("Read() error = nil, want an error")
 		}
 		if !strings.Contains(err.Error(), path) || !strings.Contains(err.Error(), "line 1") {
-			t.Errorf("readRunbookfile() error = %v, want it to mention %s and the line", err, path)
+			t.Errorf("Read() error = %v, want it to mention %s and the line", err, path)
 		}
 	})
 
 	t.Run("missing file", func(t *testing.T) {
-		if _, err := readRunbookfile(filepath.Join(dir, "nope")); err == nil {
-			t.Fatal("readRunbookfile() error = nil, want an error")
+		if _, err := Read(filepath.Join(dir, "nope")); err == nil {
+			t.Fatal("Read() error = nil, want an error")
 		}
 	})
 }
 
-func TestMainCommand(t *testing.T) {
-	want := "parsed Runbookfile successfully\n"
-	var out bytes.Buffer
-	mainCommand(&out, "Runbookfile")
-	if out.String() != want {
-		t.Errorf("mainCommand() = %s, want %s", out.String(), want)
+func TestFind(t *testing.T) {
+	entries := []Entry{
+		{Name: "services/api", Run: "npm start"},
+		{Name: "lint", Run: "golangci-lint run"},
 	}
+
+	t.Run("found", func(t *testing.T) {
+		got, err := Find(entries, "services/api")
+		if err != nil {
+			t.Fatalf("Find(): %v", err)
+		}
+		if got.Run != "npm start" {
+			t.Errorf("Find() = %+v, want the api entry", got)
+		}
+	})
+
+	t.Run("missing", func(t *testing.T) {
+		_, err := Find(entries, "api")
+		if err == nil {
+			t.Fatal("Find() error = nil, want an error")
+		}
+		if !strings.Contains(err.Error(), `"api"`) {
+			t.Errorf("Find() error = %v, want it to name the command", err)
+		}
+	})
 }
 
 // The example file is the documentation for the syntax, so it has to stay
 // something Runbook can actually read.
 func TestRunbookfileExample(t *testing.T) {
-	entries, err := readRunbookfile("Runbookfile")
+	entries, err := Read(filepath.Join("..", "..", "Runbookfile"))
 	if err != nil {
-		t.Fatalf("readRunbookfile(): %v", err)
+		t.Fatalf("Read(): %v", err)
 	}
 	if len(entries) == 0 {
 		t.Error("Runbookfile has no commands")
@@ -311,9 +329,9 @@ func TestPrintNames(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var out bytes.Buffer
-			printNames(&out, entries, tt.align)
+			PrintNames(&out, entries, tt.align)
 			if out.String() != tt.want {
-				t.Errorf("printNames(align=%v) =\n%q\nwant\n%q", tt.align, out.String(), tt.want)
+				t.Errorf("PrintNames(align=%v) =\n%q\nwant\n%q", tt.align, out.String(), tt.want)
 			}
 		})
 	}
@@ -328,9 +346,37 @@ func TestPrintNamesWidth(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	printNames(&out, entries, true)
+	PrintNames(&out, entries, true)
 	want := "café  a\nabcd  b\n"
 	if out.String() != want {
-		t.Errorf("printNames() = %q, want %q", out.String(), want)
+		t.Errorf("PrintNames() = %q, want %q", out.String(), want)
+	}
+}
+
+func TestCheck(t *testing.T) {
+	dir := t.TempDir()
+
+	file := filepath.Join(dir, "Runbookfile")
+	if err := os.WriteFile(file, []byte("api: echo hi\n"), 0o644); err != nil {
+		t.Fatalf("writing %s: %v", file, err)
+	}
+
+	tests := []struct {
+		name    string
+		path    string
+		wantErr bool
+	}{
+		{"existing file", file, false},
+		{"missing file", filepath.Join(dir, "nope"), true},
+		{"directory", dir, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := Check(tt.path)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("Check(%q) error = %v, wantErr %v", tt.path, err, tt.wantErr)
+			}
+		})
 	}
 }

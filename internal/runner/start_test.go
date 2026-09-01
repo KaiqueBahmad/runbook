@@ -1,6 +1,7 @@
-package main
+package runner
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -8,7 +9,31 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"runbook/internal/ipc"
+	"runbook/internal/runbookfile"
+	"runbook/internal/state"
 )
+
+// TestMain sends the test binary to broadcast when it is started as one, which
+// is what startEntry does: it starts another copy of runbook to carry a
+// command's output, and under test the copy at hand is this binary.
+func TestMain(m *testing.M) {
+	if len(os.Args) > 2 && os.Args[1] == BroadcastCommand {
+		if err := ipc.Broadcast(os.Args[2], os.Stdin); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+	os.Exit(m.Run())
+}
+
+// testAddr is an address to broadcast on, kept short: a unix socket address is
+// a path, and the kernel takes about a hundred characters of it.
+func testAddr(base string) string {
+	return filepath.Join(base, "api.sock")
+}
 
 // startTest starts a command in a temporary directory and gives back that
 // directory and its state file, with the command stopped again when the test
@@ -17,20 +42,20 @@ import (
 //
 // The broadcaster it starts alongside is this very test binary, which TestMain
 // sends to broadcast when it is asked for it.
-func startTest(t *testing.T, run string) (state, string, string) {
+func startTest(t *testing.T, run string) (state.State, string, string) {
 	t.Helper()
 
 	base := t.TempDir()
 	stateFile := filepath.Join(base, ".runbook", "state", "api.pid")
 
-	if _, err := startEntry(Entry{Name: "api", Run: run}, base, stateFile, testAddr(base)); err != nil {
+	if _, err := startEntry(runbookfile.Entry{Name: "api", Run: run}, base, stateFile, testAddr(base)); err != nil {
 		t.Fatalf("startEntry(): %v", err)
 	}
-	st, err := readState(stateFile)
+	st, err := state.Read(stateFile)
 	if err != nil {
-		t.Fatalf("readState(): %v", err)
+		t.Fatalf("state.Read(): %v", err)
 	}
-	t.Cleanup(func() { syscall.Kill(-st.group(), syscall.SIGKILL) })
+	t.Cleanup(func() { syscall.Kill(-st.Group(), syscall.SIGKILL) })
 
 	return st, stateFile, base
 }
@@ -39,7 +64,7 @@ func TestStartEntry(t *testing.T) {
 	t.Run("records a process that is running", func(t *testing.T) {
 		st, _, _ := startTest(t, "sleep 30")
 
-		if !st.alive() {
+		if !st.Alive() {
 			t.Error("the command is not running")
 		}
 		// The command leads a group of its own, which is what lets stop reach
@@ -56,14 +81,14 @@ func TestStartEntry(t *testing.T) {
 		st, stateFile, _ := startTest(t, "sleep 30")
 
 		base := t.TempDir()
-		_, err := startEntry(Entry{Name: "api", Run: "sleep 30"}, base, stateFile, testAddr(base))
+		_, err := startEntry(runbookfile.Entry{Name: "api", Run: "sleep 30"}, base, stateFile, testAddr(base))
 		if err == nil {
 			t.Fatal("startEntry() error = nil, want an error")
 		}
 		if !strings.Contains(err.Error(), "already running") {
 			t.Errorf("startEntry() error = %v, want it to say the command is running", err)
 		}
-		if !st.alive() {
+		if !st.Alive() {
 			t.Error("the first command was stopped")
 		}
 	})
@@ -72,17 +97,17 @@ func TestStartEntry(t *testing.T) {
 		base := t.TempDir()
 		stateFile := filepath.Join(base, "api.pid")
 
-		if _, err := startEntry(Entry{Name: "api", Run: "true"}, base, stateFile, testAddr(base)); err != nil {
+		if _, err := startEntry(runbookfile.Entry{Name: "api", Run: "true"}, base, stateFile, testAddr(base)); err != nil {
 			t.Fatalf("startEntry(): %v", err)
 		}
-		st, _ := readState(stateFile)
-		waitFor(t, func() bool { return !st.alive() })
+		st, _ := state.Read(stateFile)
+		waitFor(t, func() bool { return !st.Alive() })
 
-		if _, err := startEntry(Entry{Name: "api", Run: "sleep 30"}, base, stateFile, testAddr(base)); err != nil {
+		if _, err := startEntry(runbookfile.Entry{Name: "api", Run: "sleep 30"}, base, stateFile, testAddr(base)); err != nil {
 			t.Errorf("startEntry() on a finished command: %v", err)
 		}
-		st, _ = readState(stateFile)
-		t.Cleanup(func() { syscall.Kill(-st.group(), syscall.SIGKILL) })
+		st, _ = state.Read(stateFile)
+		t.Cleanup(func() { syscall.Kill(-st.Group(), syscall.SIGKILL) })
 	})
 }
 
@@ -92,8 +117,8 @@ func TestStopEntry(t *testing.T) {
 		// signalling only the shell would leave behind.
 		st, stateFile, _ := startTest(t, "sleep 30 & wait")
 
-		waitFor(t, func() bool { return len(groupOf(st.group())) > 1 })
-		members := groupOf(st.group())
+		waitFor(t, func() bool { return len(groupOf(st.Group())) > 1 })
+		members := groupOf(st.Group())
 		if len(members) < 2 {
 			t.Skip("the shell never spawned a child to look at")
 		}
@@ -106,7 +131,7 @@ func TestStopEntry(t *testing.T) {
 		if killed {
 			t.Error("stopEntry() had to kill a command that asks nothing of a signal")
 		}
-		if st.alive() {
+		if st.Alive() {
 			t.Error("the command is still running")
 		}
 		if syscall.Kill(child, 0) == nil {
@@ -130,7 +155,7 @@ func TestStopEntry(t *testing.T) {
 		if !killed {
 			t.Error("stopEntry() reports a clean stop, want it to report the kill")
 		}
-		if st.alive() {
+		if st.Alive() {
 			t.Error("the command is still running")
 		}
 	})
@@ -144,8 +169,8 @@ func TestStopEntry(t *testing.T) {
 
 	t.Run("a state file left behind by a process that is gone", func(t *testing.T) {
 		stateFile := filepath.Join(t.TempDir(), "api.pid")
-		if err := writeState(stateFile, stateOf(0x7FFFFFFF, "1")); err != nil {
-			t.Fatalf("writeState(): %v", err)
+		if err := state.Write(stateFile, newState(0x7FFFFFFF, "1")); err != nil {
+			t.Fatalf("state.Write(): %v", err)
 		}
 
 		_, err := stopEntry(stateFile, time.Second)
@@ -193,4 +218,27 @@ func waitFor(t *testing.T, done func() bool) {
 func exists(file string) bool {
 	_, err := os.Stat(file)
 	return err == nil
+}
+
+// TestStartEntryBroadcasts is the whole of it: start puts a command and a
+// broadcaster of its own behind an address, and what the command writes comes
+// back out of it.
+func TestStartEntryBroadcasts(t *testing.T) {
+	_, _, base := startTest(t, "while true; do echo tick; sleep 0.05; done")
+
+	conn, err := ipc.Dial(testAddr(base))
+	if err != nil {
+		t.Fatalf("ipc.Dial(): %v", err)
+	}
+	defer conn.Close()
+
+	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	buf := make([]byte, 64)
+	n, err := conn.Read(buf)
+	if err != nil {
+		t.Fatalf("reading what the command wrote: %v", err)
+	}
+	if got := string(buf[:n]); !strings.Contains(got, "tick") {
+		t.Errorf("the command was heard saying %q, want it to hold %q", got, "tick")
+	}
 }

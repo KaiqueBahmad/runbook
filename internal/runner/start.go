@@ -1,4 +1,4 @@
-package main
+package runner
 
 import (
 	"errors"
@@ -11,7 +11,18 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"runbook/internal/ipc"
+	"runbook/internal/runbookfile"
+	"runbook/internal/state"
+	"runbook/internal/workdir"
 )
+
+// BroadcastCommand is what Runbook calls itself with to carry the output of a
+// started command to whoever is listening for it. It is not for people to
+// type, so it is left out of the help and the completion scripts, and it takes
+// an address rather than the name of a command.
+const BroadcastCommand = "broadcast"
 
 // grace is how long a stopped command has to end on its own after SIGTERM,
 // before Runbook stops asking and kills it.
@@ -34,8 +45,8 @@ const bind = 2 * time.Second
 // The two are joined by a pipe. Runbook holds the write end until the command
 // has it too, and then lets go, so that the broadcaster sees the output end
 // exactly when the command does and not before.
-func startEntry(entry Entry, base, state, addr string) (int, error) {
-	if st, err := readState(state); err == nil && st.alive() {
+func startEntry(entry runbookfile.Entry, base, stateFile, addr string) (int, error) {
+	if st, err := state.Read(stateFile); err == nil && st.Alive() {
 		return 0, fmt.Errorf("%s is already running (pid %d)", entry.Name, st.PID)
 	} else if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return 0, err
@@ -80,8 +91,8 @@ func startEntry(entry Entry, base, state, addr string) (int, error) {
 
 	// Setsid makes the command the leader of its own group, so the group has
 	// the same number as the process.
-	boot, _ := processBoot(pid)
-	if err := writeState(state, stateOf(pid, boot)); err != nil {
+	boot, _ := state.ProcessBoot(pid)
+	if err := state.Write(stateFile, newState(pid, boot)); err != nil {
 		// Nothing knows about the process now, so do not leave it behind.
 		syscall.Kill(-pid, syscall.SIGKILL)
 		return 0, err
@@ -112,7 +123,7 @@ func startBroadcaster(addr string, in *os.File) (*exec.Cmd, *os.File, error) {
 	}
 	defer said.Close()
 
-	cmd := exec.Command(self, cmdBroadcast, addr)
+	cmd := exec.Command(self, BroadcastCommand, addr)
 	cmd.Stdin = in
 	cmd.Stderr = said
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
@@ -144,7 +155,7 @@ func whyNot(trouble *os.File) string {
 func waitAddr(addr string, wait time.Duration) error {
 	const step = 10 * time.Millisecond
 	for waited := time.Duration(0); ; waited += step {
-		if conn, err := dialIPC(addr); err == nil {
+		if conn, err := ipc.Dial(addr); err == nil {
 			conn.Close()
 			return nil
 		}
@@ -155,67 +166,68 @@ func waitAddr(addr string, wait time.Duration) error {
 	}
 }
 
-func stateOf(pid int, boot string) state {
-	return state{PID: pid, Boot: boot, Since: time.Now().Unix()}
+// newState is what start remembers about a command it has just started.
+func newState(pid int, boot string) state.State {
+	return state.State{PID: pid, Boot: boot, Since: time.Now().Unix()}
 }
 
 // stopEntry ends a started command and forgets it, and reports whether it had
 // to be killed outright. The signals go to the whole process group, so a
 // command that is a shell script takes what it spawned down with it.
-func stopEntry(state string, wait time.Duration) (bool, error) {
-	st, err := readState(state)
+func stopEntry(stateFile string, wait time.Duration) (bool, error) {
+	st, err := state.Read(stateFile)
 	if errors.Is(err, fs.ErrNotExist) {
 		return false, errors.New("not running")
 	}
 	if err != nil {
 		return false, err
 	}
-	if !st.alive() {
+	if !st.Alive() {
 		// The process is long gone; only the file was left behind.
-		return false, errors.Join(errors.New("not running"), os.Remove(state))
+		return false, errors.Join(errors.New("not running"), os.Remove(stateFile))
 	}
 
-	if err := syscall.Kill(-st.group(), syscall.SIGTERM); err != nil {
+	if err := syscall.Kill(-st.Group(), syscall.SIGTERM); err != nil {
 		return false, fmt.Errorf("stopping %d: %w", st.PID, err)
 	}
 	killed := false
 	if !waitGone(st, wait) {
-		if err := syscall.Kill(-st.group(), syscall.SIGKILL); err != nil {
+		if err := syscall.Kill(-st.Group(), syscall.SIGKILL); err != nil {
 			return false, fmt.Errorf("killing %d: %w", st.PID, err)
 		}
 		killed = true
 		waitGone(st, wait)
 	}
-	if err := os.Remove(state); err != nil {
+	if err := os.Remove(stateFile); err != nil {
 		return killed, err
 	}
 	return killed, nil
 }
 
 // waitGone reports whether the command ended within the time given.
-func waitGone(st state, wait time.Duration) bool {
+func waitGone(st state.State, wait time.Duration) bool {
 	const step = 20 * time.Millisecond
 	for waited := time.Duration(0); waited < wait; waited += step {
-		if !st.alive() {
+		if !st.Alive() {
 			return true
 		}
 		time.Sleep(step)
 	}
-	return !st.alive()
+	return !st.Alive()
 }
 
-// start and stop are what the commands of the same name do: find the entry,
+// Start and Stop are what the commands of the same name do: find the entry,
 // make sure Runbook has somewhere to keep its files, and report what happened.
-func start(in invocation, entries []Entry, w io.Writer) error {
-	entry, err := findEntry(entries, in.rest[0])
+func Start(path string, entries []runbookfile.Entry, name string, w io.Writer) error {
+	entry, err := runbookfile.Find(entries, name)
 	if err != nil {
 		return err
 	}
-	if _, err := ensureRunbookDir(in.path); err != nil {
+	if _, err := workdir.Ensure(path); err != nil {
 		return err
 	}
 
-	pid, err := startEntry(entry, filepath.Dir(in.path), stateFile(in.path, entry.Name), ipcAddr(in.path, entry.Name))
+	pid, err := startEntry(entry, filepath.Dir(path), state.File(path, entry.Name), ipc.Addr(path, entry.Name))
 	if err != nil {
 		return err
 	}
@@ -223,13 +235,13 @@ func start(in invocation, entries []Entry, w io.Writer) error {
 	return nil
 }
 
-func stop(in invocation, entries []Entry, w io.Writer) error {
-	entry, err := findEntry(entries, in.rest[0])
+func Stop(path string, entries []runbookfile.Entry, name string, w io.Writer) error {
+	entry, err := runbookfile.Find(entries, name)
 	if err != nil {
 		return err
 	}
 
-	killed, err := stopEntry(stateFile(in.path, entry.Name), grace)
+	killed, err := stopEntry(state.File(path, entry.Name), grace)
 	if err != nil {
 		return fmt.Errorf("%s: %w", entry.Name, err)
 	}

@@ -1,4 +1,7 @@
-package main
+// Package runner carries out what a Runbookfile lists: running a command in
+// this terminal, starting one in the background and stopping it again, saying
+// which are running, and listening to what a started one writes.
+package runner
 
 import (
 	"errors"
@@ -11,25 +14,17 @@ import (
 	"path/filepath"
 	"slices"
 	"syscall"
+
+	"runbook/internal/runbookfile"
 )
 
 // shell is what every command in a Runbookfile is handed to, so a command
 // behaves the same whatever shell the person running it uses.
 const shell = "sh"
 
-// findEntry looks up a command by the name a Runbookfile gave it.
-func findEntry(entries []Entry, name string) (Entry, error) {
-	for _, entry := range entries {
-		if entry.Name == name {
-			return entry, nil
-		}
-	}
-	return Entry{}, fmt.Errorf("no command named %q, run 'runbook list' to see them", name)
-}
-
 // entryDir is the directory a command runs in. base is the directory the
 // Runbookfile lives in, which a relative dir is measured from.
-func entryDir(entry Entry, base string) string {
+func entryDir(entry runbookfile.Entry, base string) string {
 	switch {
 	case entry.Dir == "":
 		return base
@@ -43,7 +38,7 @@ func entryDir(entry Entry, base string) string {
 // entryEnv is the environment a command runs with: the one Runbook was started
 // with, plus the command's own variables. It is nil when the command adds
 // none, which leaves the environment untouched.
-func entryEnv(entry Entry) []string {
+func entryEnv(entry runbookfile.Entry) []string {
 	if len(entry.Env) == 0 {
 		return nil
 	}
@@ -54,10 +49,20 @@ func entryEnv(entry Entry) []string {
 	return env
 }
 
+// Run runs one of a Runbookfile's commands in this terminal, and returns the
+// status it exited with, so Runbook can exit with the same one.
+func Run(path string, entries []runbookfile.Entry, name string, stdout, stderr io.Writer) (int, error) {
+	entry, err := runbookfile.Find(entries, name)
+	if err != nil {
+		return 0, err
+	}
+	return runEntry(entry, filepath.Dir(path), stdout, stderr)
+}
+
 // runEntry runs one command in the foreground and returns the status it exited
-// with, so Runbook can exit with the same one. A command killed by a signal
-// reports 128 plus that signal, the way a shell does.
-func runEntry(entry Entry, base string, stdout, stderr io.Writer) (int, error) {
+// with. A command killed by a signal reports 128 plus that signal, the way a
+// shell does.
+func runEntry(entry runbookfile.Entry, base string, stdout, stderr io.Writer) (int, error) {
 	cmd := exec.Command(shell, "-c", entry.Run)
 	cmd.Dir = entryDir(entry, base)
 	cmd.Env = entryEnv(entry)

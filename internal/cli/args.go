@@ -1,13 +1,15 @@
-package main
+// Package cli is the command line: what the arguments ask for, the help and
+// the completion scripts, and carrying the answer out.
+package cli
 
 import (
 	"errors"
 	"fmt"
-	"io/fs"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"runbook/internal/runner"
 )
 
 // defaultRunbookfile is the file Runbook looks for when no path is given.
@@ -61,11 +63,11 @@ const (
 	cmdCompletion = "completion"
 )
 
-// cmdBroadcast carries the output of a started command to whoever is listening
-// to it. Runbook starts it itself, one per started command
-// Left of the list below, the help and the completion scripts: it takes an address
-// rather than a command name, and there is nothing there for a person to do.
-const cmdBroadcast = "broadcast"
+// cmdBroadcast is Runbook talking to itself, one broadcaster per started
+// command. It is left out of the list below, of the help and of the completion
+// scripts: it takes an address rather than the name of a command, and there is
+// nothing there for a person to do.
+const cmdBroadcast = runner.BroadcastCommand
 
 // commands is every command runbook offers.
 var commands = []string{cmdList, cmdRun, cmdStart, cmdStop, cmdStatus, cmdLogs, cmdCompletion}
@@ -166,52 +168,4 @@ func checkRest(in invocation) error {
 		return fmt.Errorf("unexpected argument %q", in.rest[0])
 	}
 	return nil
-}
-
-// checkRunbookfile reports whether path is a readable regular file.
-func checkRunbookfile(path string) error {
-	info, err := os.Stat(path)
-	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			return fmt.Errorf("no runbookfile at %s", path)
-		}
-		return err
-	}
-	if info.IsDir() {
-		return fmt.Errorf("%s is a directory, not a runbookfile", path)
-	}
-	if !info.Mode().IsRegular() {
-		return fmt.Errorf("%s is not a regular file", path)
-	}
-	return nil
-}
-
-// runbookDirName is the directory Runbook creates alongside the Runbookfile to
-// keep its own files.
-const runbookDirName = ".runbook"
-
-// gitignoreAll is the content Runbook puts in the directory's .gitignore. The
-// pattern covers the ignore file itself, so nothing in there ever reaches the
-// project's git status.
-const gitignoreAll = "*\n"
-
-// ensureRunbookDir returns the path of Runbook's directory next to the
-// Runbookfile at path, creating it if it does not exist yet along with the
-// .gitignore that keeps its contents out of the project's repository.
-func ensureRunbookDir(path string) (string, error) {
-	dir := filepath.Join(filepath.Dir(path), runbookDirName)
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return "", fmt.Errorf("creating %s: %w", dir, err)
-	}
-
-	ignore := filepath.Join(dir, ".gitignore")
-	switch _, err := os.Stat(ignore); {
-	case errors.Is(err, fs.ErrNotExist):
-		if err := os.WriteFile(ignore, []byte(gitignoreAll), 0o600); err != nil {
-			return "", fmt.Errorf("creating %s: %w", ignore, err)
-		}
-	case err != nil:
-		return "", err
-	}
-	return dir, nil
 }

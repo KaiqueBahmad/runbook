@@ -1,4 +1,4 @@
-package main
+package cli
 
 // shells are the shells completion can print a script for.
 var shells = []string{"bash", "zsh", "fish"}

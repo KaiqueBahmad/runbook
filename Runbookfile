@@ -20,7 +20,7 @@ app/install-completion:
 
 go/build:
   description: Compile the binary into bin/
-  run: go build -o bin/runbook .
+  run: go build -o bin/runbook ./cmd/runbook
 
 go/test:
   description: Run every test

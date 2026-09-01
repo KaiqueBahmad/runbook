@@ -1,4 +1,4 @@
-package main
+package ipc
 
 import (
 	"io"
@@ -41,10 +41,10 @@ func newBroadcaster() *broadcaster {
 	return &broadcaster{listeners: map[chan []byte]struct{}{}}
 }
 
-// broadcast reads a command's output from in and hands it to whoever connects
+// Broadcast reads a command's output from in and hands it to whoever connects
 // to addr, until the command ends.
-func broadcast(addr string, in io.Reader) error {
-	l, err := listenIPC(addr)
+func Broadcast(addr string, in io.Reader) error {
+	l, err := Listen(addr)
 	if err != nil {
 		return err
 	}

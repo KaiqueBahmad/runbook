@@ -1,6 +1,8 @@
 //go:build !windows
 
-package main
+// Package ipc is how Runbook reaches the broadcaster of a started command: the
+// address it listens at, and the broadcaster itself.
+package ipc
 
 import (
 	"errors"
@@ -10,6 +12,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"runbook/internal/workdir"
 )
 
 // Runbook reaches a broadcaster over an address only this machine can see: a
@@ -28,21 +32,21 @@ const sockExt = ".sock"
 // from the bind, which says nothing about which path was too long.
 const maxAddr = 100
 
-// sockDir is where the addresses of one Runbookfile's commands live. It sits
+// dir is where the addresses of one Runbookfile's commands live. It sits
 // beside the directory of state files, named after the Runbookfile the same
 // way, so two Runbookfiles side by side do not share it.
-func sockDir(path string) string {
-	return filepath.Join(filepath.Dir(path), runbookDirName, filepath.Base(path)+sockExt)
+func dir(path string) string {
+	return filepath.Join(filepath.Dir(path), workdir.Name, filepath.Base(path)+sockExt)
 }
 
-// ipcAddr is the address the broadcaster of one command listens on. A command
+// Addr is the address the broadcaster of one command listens on. A command
 // name is a path already, so its folders become directories.
-func ipcAddr(path, name string) string {
-	return filepath.Join(sockDir(path), filepath.FromSlash(name)+sockExt)
+func Addr(path, name string) string {
+	return filepath.Join(dir(path), filepath.FromSlash(name)+sockExt)
 }
 
-// listenIPC takes up the address a broadcaster is reached at.
-func listenIPC(addr string) (net.Listener, error) {
+// Listen takes up the address a broadcaster is reached at.
+func Listen(addr string) (net.Listener, error) {
 	if len(addr) > maxAddr {
 		return nil, fmt.Errorf("the address %s is %d characters, and a socket takes %d", addr, len(addr), maxAddr)
 	}
@@ -65,28 +69,28 @@ func listenIPC(addr string) (net.Listener, error) {
 	return l, nil
 }
 
-// dialIPC connects to the broadcaster of a command. It fails when there is
+// Dial connects to the broadcaster of a command. It fails when there is
 // nobody at the address, which is what a command that is not running looks
 // like.
-func dialIPC(addr string) (net.Conn, error) {
+func Dial(addr string) (net.Conn, error) {
 	return net.Dial("unix", addr)
 }
 
-// sweepIPC forgets the addresses of one Runbookfile's commands that nobody is
+// Sweep forgets the addresses of one Runbookfile's commands that nobody is
 // behind any more: what a broadcaster killed outright left in the filesystem,
 // and the folders left empty once those are gone.
-func sweepIPC(path string) error {
-	return sweepUnder(sockDir(path), deadAddr)
+func Sweep(path string) error {
+	return workdir.SweepUnder(dir(path), dead)
 }
 
-// deadAddr reports whether an address is one nobody is listening at. Connecting
+// dead reports whether an address is one nobody is listening at. Connecting
 // is the whole of the test: an address is only there while a broadcaster holds
 // it, and one that refuses the connection is a leftover.
-func deadAddr(file string) bool {
+func dead(file string) bool {
 	if !strings.HasSuffix(file, sockExt) {
 		return false
 	}
-	conn, err := dialIPC(file)
+	conn, err := Dial(file)
 	if err != nil {
 		return true
 	}
