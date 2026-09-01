@@ -279,3 +279,18 @@ func TestRunbookfileExample(t *testing.T) {
 		t.Error("Runbookfile has no commands")
 	}
 }
+
+func TestPrintNames(t *testing.T) {
+	entries := []Entry{
+		{Name: "services/api", Run: "mvn spring-boot:run"},
+		{Name: "lint", Run: "golangci-lint run"},
+	}
+
+	want := "services/api\nlint\n"
+
+	var out bytes.Buffer
+	printNames(&out, entries)
+	if out.String() != want {
+		t.Errorf("printNames() = %q, want %q", out.String(), want)
+	}
+}

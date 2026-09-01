@@ -6,12 +6,13 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // defaultRunbookfile is the file Runbook looks for when no path is given.
 const defaultRunbookfile = "Runbookfile"
 
-const usage = "usage: runbook [-f runbookfile]"
+const usage = "usage: runbook [-f runbookfile] [command]"
 
 // helpHint points at the help text. It is printed instead of the usage line
 // when the arguments are wrong.
@@ -24,6 +25,9 @@ Runbook opens a GUI control panel for the commands listed in a Runbookfile.
 
 With no arguments it looks for a Runbookfile in the current directory; pass a
 path after -f to open a different file instead.
+
+Commands:
+  list         print the name of every command in the Runbookfile
 
 Options:
   -f, --file   path of the Runbookfile to open
@@ -39,42 +43,59 @@ const (
 	fileFlagShort = "-f"
 )
 
+// The commands runbook takes. An empty command opens the panel.
+const cmdList = "list"
+
 // parseArgs turns the command line arguments (without the program name) into
-// the full path of the Runbookfile to open. With no arguments it falls back to
-// the default Runbookfile; any other path has to come after -f or --file.
-// Relative paths are resolved against the current directory. A --help or -h
-// anywhere in the arguments returns errHelpRequested instead.
-func parseArgs(args []string) (string, error) {
-	for _, arg := range args {
-		if arg == "--help" || arg == "-h" {
-			return "", errHelpRequested
+// the command to carry out and the full path of the Runbookfile to work on.
+// The command is empty when none was given. The Runbookfile defaults to the
+// one in the current directory, and any other path has to come after -f or
+// --file; relative paths are resolved against the current directory. A --help
+// or -h anywhere in the arguments returns errHelpRequested instead.
+func parseArgs(args []string) (string, string, error) {
+	var cmd, path string
+
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch {
+		case arg == "--help" || arg == "-h":
+			return "", "", errHelpRequested
+
+		case arg == fileFlagShort || arg == fileFlag:
+			if path != "" {
+				return "", "", fmt.Errorf("%s is given twice", arg)
+			}
+			i++
+			if i == len(args) {
+				return "", "", fmt.Errorf("missing runbookfile path after %s", arg)
+			}
+			if args[i] == "" {
+				return "", "", errors.New("runbookfile path is empty")
+			}
+			path = args[i]
+
+		case strings.HasPrefix(arg, "-"):
+			return "", "", fmt.Errorf("unknown flag %q", arg)
+
+		case cmd != "":
+			return "", "", fmt.Errorf("unexpected argument %q", arg)
+
+		case arg == cmdList:
+			cmd = arg
+
+		default:
+			return "", "", fmt.Errorf("unknown command %q", arg)
 		}
 	}
 
-	path := defaultRunbookfile
-
-	switch len(args) {
-	case 0:
-	case 1, 2:
-		if args[0] != fileFlagShort && args[0] != fileFlag {
-			return "", fmt.Errorf("unexpected argument %q", args[0])
-		}
-		if len(args) == 1 {
-			return "", fmt.Errorf("missing runbookfile path after %s", args[0])
-		}
-		if args[1] == "" {
-			return "", errors.New("runbookfile path is empty")
-		}
-		path = args[1]
-	default:
-		return "", fmt.Errorf("expected at most one runbookfile path, got %d arguments", len(args))
+	if path == "" {
+		path = defaultRunbookfile
 	}
-
 	full, err := filepath.Abs(path)
 	if err != nil {
-		return "", fmt.Errorf("resolving %q: %w", path, err)
+		return "", "", fmt.Errorf("resolving %q: %w", path, err)
 	}
-	return full, nil
+	return cmd, full, nil
 }
 
 // checkRunbookfile reports whether path is a readable regular file.

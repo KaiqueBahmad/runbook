@@ -21,25 +21,35 @@ func TestParseArgs(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    []string
+		wantCmd string
 		want    string
 		wantErr bool
 	}{
-		{"no args defaults to Runbookfile", nil, abs(t, defaultRunbookfile), false},
-		{"relative path is resolved", []string{"-f", "path/to/other"}, abs(t, "path/to/other"), false},
-		{"absolute path is kept", []string{"-f", "/etc/Runbookfile"}, "/etc/Runbookfile", false},
-		{"long flag", []string{"--file", "/etc/Runbookfile"}, "/etc/Runbookfile", false},
-		{"empty path", []string{"-f", ""}, "", true},
-		{"path without the flag", []string{"path/to/other"}, "", true},
-		{"flag without a path", []string{"-f"}, "", true},
-		{"unknown flag", []string{"--nope", "path/to/other"}, "", true},
-		{"too many args", []string{"-f", "a", "b"}, "", true},
+		{"no args defaults to Runbookfile", nil, "", abs(t, defaultRunbookfile), false},
+		{"relative path is resolved", []string{"-f", "path/to/other"}, "", abs(t, "path/to/other"), false},
+		{"absolute path is kept", []string{"-f", "/etc/Runbookfile"}, "", "/etc/Runbookfile", false},
+		{"long flag", []string{"--file", "/etc/Runbookfile"}, "", "/etc/Runbookfile", false},
+		{"list", []string{"list"}, cmdList, abs(t, defaultRunbookfile), false},
+		{"list after the flag", []string{"-f", "/etc/Runbookfile", "list"}, cmdList, "/etc/Runbookfile", false},
+		{"list before the flag", []string{"list", "-f", "/etc/Runbookfile"}, cmdList, "/etc/Runbookfile", false},
+		{"empty path", []string{"-f", ""}, "", "", true},
+		{"path without the flag", []string{"path/to/other"}, "", "", true},
+		{"flag without a path", []string{"-f"}, "", "", true},
+		{"flag given twice", []string{"-f", "a", "-f", "b"}, "", "", true},
+		{"unknown flag", []string{"--nope", "list"}, "", "", true},
+		{"unknown command", []string{"run"}, "", "", true},
+		{"command given twice", []string{"list", "list"}, "", "", true},
+		{"too many args", []string{"-f", "a", "list", "b"}, "", "", true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseArgs(tt.args)
+			cmd, got, err := parseArgs(tt.args)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("parseArgs(%q) error = %v, wantErr %v", tt.args, err, tt.wantErr)
+			}
+			if cmd != tt.wantCmd {
+				t.Errorf("parseArgs(%q) command = %q, want %q", tt.args, cmd, tt.wantCmd)
 			}
 			if got != tt.want {
 				t.Errorf("parseArgs(%q) = %q, want %q", tt.args, got, tt.want)
@@ -53,17 +63,18 @@ func TestParseArgsHelp(t *testing.T) {
 		{"--help"},
 		{"-h"},
 		{"-f", "path/to/other", "--help"},
+		{"list", "--help"},
 		{"-h", "a", "b"},
 	}
 
 	for _, tt := range args {
 		t.Run(strings.Join(tt, " "), func(t *testing.T) {
-			got, err := parseArgs(tt)
+			cmd, got, err := parseArgs(tt)
 			if !errors.Is(err, errHelpRequested) {
 				t.Fatalf("parseArgs(%q) error = %v, want errHelpRequested", tt, err)
 			}
-			if got != "" {
-				t.Errorf("parseArgs(%q) = %q, want empty path", tt, got)
+			if cmd != "" || got != "" {
+				t.Errorf("parseArgs(%q) = %q, %q, want both empty", tt, cmd, got)
 			}
 		})
 	}

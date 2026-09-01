@@ -238,3 +238,11 @@ func printEntries(w io.Writer, entries []Entry) {
 		}
 	}
 }
+
+// printNames writes one command name per line, in the order the Runbookfile
+// lists them. It is what shell completion reads.
+func printNames(w io.Writer, entries []Entry) {
+	for _, entry := range entries {
+		fmt.Fprintln(w, entry.Name)
+	}
+}

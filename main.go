@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	path, err := parseArgs(os.Args[1:])
+	cmd, path, err := parseArgs(os.Args[1:])
 	if errors.Is(err, errHelpRequested) {
 		fmt.Println(help)
 		return
@@ -32,6 +32,13 @@ func main() {
 		fmt.Fprintf(os.Stderr, "runbook: %v\n", err)
 		os.Exit(1)
 	}
+
+	// list only reads, so it leaves no .runbook directory behind.
+	if cmd == cmdList {
+		printNames(os.Stdout, entries)
+		return
+	}
+
 	printEntries(os.Stdout, entries)
 
 	dir, err := ensureRunbookDir(path)
