@@ -3,17 +3,13 @@ package cli
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
 
+	"runbook/internal/gui"
 	"runbook/internal/ipc"
 	"runbook/internal/runbookfile"
 	"runbook/internal/runner"
 	"runbook/internal/workdir"
-	// "fyne.io/fyne/v2"
-	// "fyne.io/fyne/v2/app"
-	// "fyne.io/fyne/v2/container"
-	// "fyne.io/fyne/v2/widget"
 )
 
 // Main carries out what the command line asked for, and gives back the status
@@ -91,30 +87,15 @@ func Main(args []string) int {
 		return code
 	}
 
-	// No command at all opens the panel, which is not there yet.
-	mainCommand(os.Stdout, in.path)
-
+	// No command at all opens the panel. It works with what is running, so it
+	// forgets what has ended the way the other commands of that kind do.
+	if err := runner.Sweep(in.path); err != nil {
+		fmt.Fprintf(os.Stderr, "runbook: could not tidy up: %v\n", err)
+	}
 	if _, err := workdir.Ensure(in.path); err != nil {
 		return report(err)
 	}
-
-	// a := app.New()
-	// w := a.NewWindow("Runbook")
-
-	// label := widget.NewLabel(fmt.Sprintf("Runbookfile: %s", path))
-	// button := widget.NewButton("Click me", func() {
-	// 	label.SetText("Button clicked!")
-	// })
-
-	// w.SetContent(container.NewVBox(
-	// 	label,
-	// 	button,
-	// ))
-
-	// w.Resize(fyne.NewSize(300, 200))
-	// w.ShowAndRun()
-
-	return 0
+	return report(gui.Open(in.path, entries))
 }
 
 // report says what went wrong, if anything did, and gives back the status to
@@ -125,12 +106,6 @@ func report(err error) int {
 	}
 	fmt.Fprintf(os.Stderr, "runbook: %v\n", err)
 	return 1
-}
-
-// mainCommand stands in for the panel until there is one: by the time it is
-// called the Runbookfile has been read, so it says so.
-func mainCommand(w io.Writer, path string) {
-	fmt.Fprintf(w, "parsed %s successfully\n", path)
 }
 
 // isTerminal reports whether f is a terminal, rather than a pipe or a file

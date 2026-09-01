@@ -79,7 +79,17 @@ func runEntry(entry runbookfile.Entry, base string, stdout, stderr io.Writer) (i
 	// long enough to report how the command ended.
 	defer ignoreInterrupts()()
 
-	err := cmd.Wait()
+	code, err := exitStatus(cmd.Wait())
+	if err != nil {
+		return 0, fmt.Errorf("running %s: %w", entry.Name, err)
+	}
+	return code, nil
+}
+
+// exitStatus is the status a command exited with, the way a shell reports it: a
+// command killed by a signal is 128 plus that signal. The error is only there
+// when the command could not be waited for at all.
+func exitStatus(err error) (int, error) {
 	var exit *exec.ExitError
 	switch {
 	case err == nil:
@@ -93,7 +103,7 @@ func runEntry(entry runbookfile.Entry, base string, stdout, stderr io.Writer) (i
 		}
 		return 1, nil
 	default:
-		return 0, fmt.Errorf("running %s: %w", entry.Name, err)
+		return 0, err
 	}
 }
 

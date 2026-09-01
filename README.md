@@ -47,13 +47,28 @@ That's where Runbook keeps its own files, one set per project.
 The file has to exist before the window opens. If it's missing, or the path points at
 a directory, Runbook says so and exits rather than starting up empty.
 
-Either way, this opens the control panel. Each entry gets:
+Either way, this opens the control panel: the commands on the left, grouped into folders by
+the slashes in their names, and the output of one of them on the right.
 
-- A **Start** / **Stop** button (Stop is a no-op once a one-off script has already finished)
-- A live-updating **log view** (stdout and stderr)
-- A **status indicator** — running, stopped or crashed
+Pick a command and the sidebar offers what can actually be done to it:
+
+- **Run** — run it here. It belongs to the window and ends with it.
+- **Start** — start it in the background, where it outlives the window and a `runbook stop`
+  from any terminal can reach it.
+- **Stop** — end it, whichever way it was set going.
+- **Logs** — put what it has said on the right.
+
+Run, Start and Logs each open that command's output on the right. A button you can't use is
+greyed out: a command that isn't running can't be stopped, one that is can't be started over,
+and one that has said nothing has no output to show.
 
 Nothing starts automatically — you decide what runs and when, whether that's leaving a server up all day or firing off a migration script once.
+
+The window doesn't go looking on its own either. On opening it connects to every command
+that's broadcasting and keeps the last 1000 lines of each, and the output on the right keeps
+up with what comes in — but *what is running*, and the buttons that leaves you, is what was
+last asked for. **Refresh**, at the top, asks again: that's what picks up a command someone
+started in another terminal, or one that has ended since.
 
 ## What Runbook is not
 
@@ -68,6 +83,7 @@ The source is one small binary over a handful of packages, each with a single jo
 ```
 cmd/runbook/           the entry point, which only hands the arguments over
 internal/cli/          the command line: arguments, help, completion, and carrying the answer out
+internal/gui/          the panel: the commands on the left, what one of them is saying on the right
 internal/runner/       running a command here, starting one in the background, stopping it, status, logs
 internal/runbookfile/  the file format, read into the entries the rest of the program works with
 internal/state/        what Runbook remembers of a started command, so a later stop finds the process
