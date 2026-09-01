@@ -45,3 +45,7 @@ git/log:
 demo/sleep:
   description: Sleep for twenty seconds, to try start and stop against
   run: sleep 20
+
+demo/chatter:
+  description: Count upwards forever, to try logs against
+  run: i=0; while true; do i=$((i+1)); echo "tick $i"; [ $((i % 5)) -eq 0 ] && echo "every fifth one goes to stderr" >&2; sleep 0.5; done
