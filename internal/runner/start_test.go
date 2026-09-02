@@ -13,6 +13,7 @@ import (
 	"runbook/internal/ipc"
 	"runbook/internal/runbookfile"
 	"runbook/internal/state"
+	"runbook/internal/workdir"
 )
 
 // TestMain sends the test binary to broadcast when it is started as one, which
@@ -33,6 +34,23 @@ func TestMain(m *testing.M) {
 // a path, and the kernel takes about a hundred characters of it.
 func testAddr(base string) string {
 	return filepath.Join(base, "api.sock")
+}
+
+// testProject writes a runbook.yml in a directory of its own and gives back
+// its path along with the directory Runbook keeps its files in. The home
+// directory is one of the test's own, so that running the tests leaves nothing
+// in the home directory of whoever ran them.
+func testProject(t *testing.T) (string, string) {
+	t.Helper()
+
+	t.Setenv("HOME", t.TempDir())
+	path := filepath.Join(t.TempDir(), "runbook.yml")
+
+	store, err := workdir.Ensure(path)
+	if err != nil {
+		t.Fatalf("workdir.Ensure(): %v", err)
+	}
+	return path, store
 }
 
 // startTest starts a command in a temporary directory and gives back that

@@ -51,9 +51,10 @@ It says what Runbook is, how a runbook.yml is written, and what each command doe
 to whatever is reading its output. It needs no runbook.yml of its own, so it is
 also what to read before writing one.
 
-On startup Runbook also creates a `.runbook` directory next to the runbook.yml
-if it isn't there already — so it lands in whatever folder the file lives in.
-That's where Runbook keeps its own files, one set per project.
+Runbook keeps what it knows in `~/.runbook`, in a directory of its own per
+runbook.yml — named after the project, with a fingerprint of the file's full path
+behind it, so that two projects called the same thing never share one. Your project
+is left exactly as it was found: Runbook writes nothing into it.
 
 The file has to exist before the window opens. If it's missing, or the path points at
 a directory, Runbook says so and exits rather than starting up empty.
@@ -70,16 +71,17 @@ Pick a command and the sidebar offers what can actually be done to it:
 - **Logs** — put what it has said on the right.
 
 Run, Start and Logs each open that command's output on the right. A button you can't use is
-greyed out: a command that isn't running can't be stopped, one that is can't be started over,
-and one that has said nothing has no output to show.
+greyed out: a command that isn't running can't be stopped, and one that is can't be started
+over. Logs is always there — a command that has said nothing shows nothing, which is itself
+worth being able to see.
 
 Nothing starts automatically — you decide what runs and when, whether that's leaving a server up all day or firing off a migration script once.
 
-The window doesn't go looking on its own either. On opening it connects to every command
-that's broadcasting and keeps the last 1000 lines of each, and the output on the right keeps
-up with what comes in — but *what is running*, and the buttons that leaves you, is what was
-last asked for. **Refresh**, at the top, asks again: that's what picks up a command someone
-started in another terminal, or one that has ended since.
+The window keeps itself up to date. It connects to every command that's broadcasting and
+keeps the last 1000 lines of each, so the output on the right follows what comes in; and
+once a second it looks again at what is running, so a command someone started in another
+terminal, or one that has ended since, turns up on its own. The count at the top says how
+much of the file is going.
 
 ## What Runbook is not
 

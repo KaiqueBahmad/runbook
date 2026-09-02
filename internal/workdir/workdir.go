@@ -1,8 +1,11 @@
-// Package workdir is the directory Runbook keeps its own files in, and the
-// sweeping of what it leaves behind there.
+// Package workdir is where Runbook keeps its own files: one directory per
+// runbook.yml, all of them together in the home directory of whoever is
+// running it, and the sweeping of what is left behind in them.
 package workdir
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -10,39 +13,61 @@ import (
 	"path/filepath"
 )
 
-// Name is the directory Runbook creates alongside the runbook.yml to keep its
-// own files.
+// Name is the directory Runbook keeps everything it knows in, in the home
+// directory of whoever is running it. A project is left exactly as it was
+// found: what Runbook writes down is its own business, and it has no place in
+// somebody else's repository.
 const Name = ".runbook"
 
-// gitignoreAll is the content Runbook puts in the directory's .gitignore. The
-// pattern covers the ignore file itself, so nothing in there ever reaches the
-// project's git status.
-const gitignoreAll = "*\n"
+// maxName is as much of a project's name as its directory carries. The rest is
+// what tells two projects apart anyway, and an address that a socket is bound
+// to has only so many characters to give.
+const maxName = 16
 
-// Path is where Runbook keeps the files of the runbook.yml at path.
-func Path(path string) string {
-	return filepath.Join(filepath.Dir(path), Name)
+// Path is where the files of the runbook.yml at path live. It wants the full
+// path of the file, since that is what tells one project from another.
+func Path(path string) (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("finding the home directory to keep Runbook's files in: %w", err)
+	}
+	return filepath.Join(home, Name, key(path)), nil
 }
 
-// Ensure returns the path of Runbook's directory next to the runbook.yml at
-// path, creating it if it does not exist yet along with the .gitignore that
-// keeps its contents out of the project's repository.
+// Ensure is Path, with the directory made if it was not there yet.
 func Ensure(path string) (string, error) {
-	dir := Path(path)
+	dir, err := Path(path)
+	if err != nil {
+		return "", err
+	}
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", fmt.Errorf("creating %s: %w", dir, err)
 	}
-
-	ignore := filepath.Join(dir, ".gitignore")
-	switch _, err := os.Stat(ignore); {
-	case errors.Is(err, fs.ErrNotExist):
-		if err := os.WriteFile(ignore, []byte(gitignoreAll), 0o600); err != nil {
-			return "", fmt.Errorf("creating %s: %w", ignore, err)
-		}
-	case err != nil:
-		return "", err
-	}
 	return dir, nil
+}
+
+// key names the directory of one runbook.yml: what the project is called, so
+// that someone looking through them can tell which is which, and a fingerprint
+// of the whole path, so that two projects of the same name, or two files in
+// one project, never come to the same place.
+func key(path string) string {
+	sum := sha256.Sum256([]byte(path))
+	return name(path) + "-" + hex.EncodeToString(sum[:8])
+}
+
+// name is what to call the project a runbook.yml belongs to: the directory it
+// sits in, kept short, and left out altogether where that is nothing to name a
+// directory after.
+func name(path string) string {
+	dir := filepath.Base(filepath.Dir(path))
+	switch dir {
+	case ".", "..", string(filepath.Separator):
+		return "runbook"
+	}
+	if runes := []rune(dir); len(runes) > maxName {
+		dir = string(runes[:maxName])
+	}
+	return dir
 }
 
 // SweepUnder clears the files under dir that gone reports are past, and the

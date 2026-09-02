@@ -10,10 +10,10 @@ import (
 )
 
 func TestAddr(t *testing.T) {
-	path := "/home/kaique/project/runbook.yml"
-	want := "/home/kaique/project/.runbook/runbook.yml.sock/services/api.sock"
-	if got := Addr(path, "services/api"); got != want {
-		t.Errorf("Addr(%q, %q) = %q, want %q", path, "services/api", got, want)
+	work := "/home/someone/.runbook/project-0123456789abcdef"
+	want := work + "/sock/services/api.sock"
+	if got := Addr(work, "services/api"); got != want {
+		t.Errorf("Addr(%q, %q) = %q, want %q", work, "services/api", got, want)
 	}
 }
 
@@ -67,18 +67,17 @@ func TestListen(t *testing.T) {
 }
 
 func TestSweep(t *testing.T) {
-	project := t.TempDir()
-	path := filepath.Join(project, "runbook.yml")
+	work := t.TempDir()
 
 	// One with a broadcaster behind it, one a killed broadcaster left behind.
-	live := Addr(path, "api")
+	live := Addr(work, "api")
 	l, err := Listen(live)
 	if err != nil {
 		t.Fatalf("Listen(): %v", err)
 	}
 	defer l.Close()
 
-	stale := Addr(path, "old/web")
+	stale := Addr(work, "old/web")
 	if err := os.MkdirAll(filepath.Dir(stale), 0o700); err != nil {
 		t.Fatalf("creating %s: %v", filepath.Dir(stale), err)
 	}
@@ -86,7 +85,7 @@ func TestSweep(t *testing.T) {
 		t.Fatalf("writing %s: %v", stale, err)
 	}
 
-	if err := Sweep(path); err != nil {
+	if err := Sweep(work); err != nil {
 		t.Fatalf("Sweep(): %v", err)
 	}
 	if exists(stale) {

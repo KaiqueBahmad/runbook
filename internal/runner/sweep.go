@@ -3,6 +3,7 @@ package runner
 import (
 	"runbook/internal/ipc"
 	"runbook/internal/state"
+	"runbook/internal/workdir"
 )
 
 // Sweep forgets what the commands of a runbook.yml have left behind since they
@@ -13,8 +14,12 @@ import (
 // state file and a dead process the same way, and an address with nobody
 // behind it is bound over on the next start.
 func Sweep(path string) error {
-	if err := state.Sweep(path); err != nil {
+	work, err := workdir.Path(path)
+	if err != nil {
 		return err
 	}
-	return ipc.Sweep(path)
+	if err := state.Sweep(work); err != nil {
+		return err
+	}
+	return ipc.Sweep(work)
 }

@@ -223,11 +223,12 @@ func Start(path string, entries []runbookfile.Entry, name string, w io.Writer) e
 	if err != nil {
 		return err
 	}
-	if _, err := workdir.Ensure(path); err != nil {
+	work, err := workdir.Ensure(path)
+	if err != nil {
 		return err
 	}
 
-	pid, err := startEntry(entry, filepath.Dir(path), state.File(path, entry.Name), ipc.Addr(path, entry.Name))
+	pid, err := startEntry(entry, filepath.Dir(path), state.File(work, entry.Name), ipc.Addr(work, entry.Name))
 	if err != nil {
 		return err
 	}
@@ -241,7 +242,12 @@ func Stop(path string, entries []runbookfile.Entry, name string, w io.Writer) er
 		return err
 	}
 
-	killed, err := stopEntry(state.File(path, entry.Name), grace)
+	work, err := workdir.Path(path)
+	if err != nil {
+		return err
+	}
+
+	killed, err := stopEntry(state.File(work, entry.Name), grace)
 	if err != nil {
 		return fmt.Errorf("%s: %w", entry.Name, err)
 	}

@@ -11,25 +11,21 @@ import (
 )
 
 func TestStatePaths(t *testing.T) {
-	path := "/project/runbook.yml"
+	// What Runbook keeps for one project, which is where the state of its
+	// commands goes.
+	work := "/home/someone/.runbook/project-0123456789abcdef"
 
-	t.Run("the state of one runbook.yml stays together", func(t *testing.T) {
-		want := "/project/.runbook/runbook.yml.state"
-		if got := Dir(path); got != want {
+	t.Run("the state of one project stays together", func(t *testing.T) {
+		want := work + "/state"
+		if got := Dir(work); got != want {
 			t.Errorf("Dir() = %q, want %q", got, want)
 		}
 	})
 
 	t.Run("folders in a name become directories", func(t *testing.T) {
-		want := "/project/.runbook/runbook.yml.state/services/api.pid"
-		if got := File(path, "services/api"); got != want {
+		want := work + "/state/services/api.pid"
+		if got := File(work, "services/api"); got != want {
 			t.Errorf("File() = %q, want %q", got, want)
-		}
-	})
-
-	t.Run("two runbook.yml files side by side do not share it", func(t *testing.T) {
-		if Dir(path) == Dir("/project/Other") {
-			t.Error("Dir() is the same for two different runbook.yml files")
 		}
 	})
 }
@@ -122,12 +118,11 @@ func TestStateUptime(t *testing.T) {
 }
 
 func TestSweep(t *testing.T) {
-	project := t.TempDir()
-	path := filepath.Join(project, "runbook.yml")
-	dir := Dir(path)
+	work := t.TempDir()
+	dir := Dir(work)
 
-	t.Run("a runbook.yml that never started anything", func(t *testing.T) {
-		if err := Sweep(path); err != nil {
+	t.Run("a project that never started anything", func(t *testing.T) {
+		if err := Sweep(work); err != nil {
 			t.Errorf("Sweep(): %v", err)
 		}
 	})
@@ -157,7 +152,7 @@ func TestSweep(t *testing.T) {
 		// Not a state file at all.
 		other := write(t, "notes.txt", "hello\n")
 
-		if err := Sweep(path); err != nil {
+		if err := Sweep(work); err != nil {
 			t.Fatalf("Sweep(): %v", err)
 		}
 
@@ -182,7 +177,7 @@ func TestSweep(t *testing.T) {
 		}
 		write(t, "one/two/three.pid", "2147483647 1 1756699472\n")
 
-		if err := Sweep(path); err != nil {
+		if err := Sweep(work); err != nil {
 			t.Fatalf("Sweep(): %v", err)
 		}
 		if exists(dir) {

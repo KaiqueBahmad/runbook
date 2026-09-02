@@ -23,26 +23,28 @@ import (
 //
 // TODO: write the Windows half of this, an ipc_windows.go with named pipes.
 
-// sockExt names both the directory the addresses of one runbook.yml's commands
-// live in and the address of one command inside it.
-const sockExt = ".sock"
+// sockDirName names the directory the addresses of one runbook.yml's commands
+// live in, and sockExt the address of one command inside it.
+const (
+	sockDirName = "sock"
+	sockExt     = ".sock"
+)
 
 // maxAddr is about as long as the kernel takes a socket address, which is a
 // path here. Bound rather than reported, it comes back as "invalid argument"
 // from the bind, which says nothing about which path was too long.
 const maxAddr = 100
 
-// dir is where the addresses of one runbook.yml's commands live. It sits
-// beside the directory of state files, named after the file the same way, so
-// two runbook.yml files side by side do not share it.
-func dir(path string) string {
-	return filepath.Join(filepath.Dir(path), workdir.Name, filepath.Base(path)+sockExt)
+// dir is where the addresses of one runbook.yml's commands live, beside the
+// state files, inside the directory Runbook keeps for that file.
+func dir(work string) string {
+	return filepath.Join(work, sockDirName)
 }
 
 // Addr is the address the broadcaster of one command listens on. A command
 // name is a path already, so its folders become directories.
-func Addr(path, name string) string {
-	return filepath.Join(dir(path), filepath.FromSlash(name)+sockExt)
+func Addr(work, name string) string {
+	return filepath.Join(dir(work), filepath.FromSlash(name)+sockExt)
 }
 
 // Listen takes up the address a broadcaster is reached at.
@@ -79,8 +81,8 @@ func Dial(addr string) (net.Conn, error) {
 // Sweep forgets the addresses of one runbook.yml's commands that nobody is
 // behind any more: what a broadcaster killed outright left in the filesystem,
 // and the folders left empty once those are gone.
-func Sweep(path string) error {
-	return workdir.SweepUnder(dir(path), dead)
+func Sweep(work string) error {
+	return workdir.SweepUnder(dir(work), dead)
 }
 
 // dead reports whether an address is one nobody is listening at. Connecting

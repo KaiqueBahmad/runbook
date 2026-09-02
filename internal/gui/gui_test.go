@@ -17,6 +17,7 @@ import (
 	"runbook/internal/runbookfile"
 	"runbook/internal/runner"
 	"runbook/internal/state"
+	"runbook/internal/workdir"
 )
 
 // TestMain sends the test binary to broadcast when it is started as one: the
@@ -40,6 +41,10 @@ func testPanel(t *testing.T, file string) *panel {
 
 	test.NewTempApp(t)
 
+	// The home directory is one of the test's own, so that running the tests
+	// leaves nothing in the home directory of whoever ran them.
+	t.Setenv("HOME", t.TempDir())
+
 	path := filepath.Join(t.TempDir(), "runbook.yml")
 	if err := os.WriteFile(path, []byte(file), 0o600); err != nil {
 		t.Fatalf("writing %s: %v", path, err)
@@ -48,8 +53,12 @@ func testPanel(t *testing.T, file string) *panel {
 	if err != nil {
 		t.Fatalf("runbookfile.Read(): %v", err)
 	}
+	store, err := workdir.Ensure(path)
+	if err != nil {
+		t.Fatalf("workdir.Ensure(): %v", err)
+	}
 
-	p := newPanel(path, entries)
+	p := newPanel(path, store, entries)
 	p.win = test.NewTempWindow(t, p.content())
 	return p
 }
@@ -275,13 +284,13 @@ func TestStartAndStop(t *testing.T) {
 	if c.how != idle {
 		t.Errorf("the command is %v after being stopped, want it idle", c.how)
 	}
-	if st, err := state.Read(state.File(p.path, "api")); err == nil && st.Alive() {
+	if st, err := state.Read(state.File(p.store, "api")); err == nil && st.Alive() {
 		t.Error("the process is still running")
 	}
 }
 
-// TestRefresh is the whole of what the window does not do on its own: a
-// command started from somewhere else is not there until someone asks.
+// TestRefresh is what the window goes and looks at every second: a command
+// started from somewhere else, which it had no way of hearing about.
 func TestRefresh(t *testing.T) {
 	p := testPanel(t, "api:\n  run: while true; do echo tick; sleep 0.05; done\n")
 	c := p.byName["api"]
@@ -292,13 +301,13 @@ func TestRefresh(t *testing.T) {
 	t.Cleanup(func() { runner.Stop(p.path, p.entries, "api", io.Discard) })
 
 	if c.how != idle {
-		t.Error("the window knew a command had been started before it was asked to look")
+		t.Error("the window knew a command had been started before it looked")
 	}
 
 	p.refresh()
 
 	if c.how != started {
-		t.Fatalf("the command is %v after a refresh, want it started", c.how)
+		t.Fatalf("the command is %v after a look, want it started", c.how)
 	}
 	if !c.heard.Load() {
 		t.Fatal("the window is not listening to a command that is broadcasting")

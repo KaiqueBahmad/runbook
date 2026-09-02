@@ -12,6 +12,7 @@ import (
 
 	"runbook/internal/runbookfile"
 	"runbook/internal/state"
+	"runbook/internal/workdir"
 )
 
 // Running is a command that was started and is still going.
@@ -25,9 +26,14 @@ type Running struct {
 // order the file lists them. A command that was never started, or whose state
 // was left behind by a process that has since gone, is simply not among them.
 func Status(path string, entries []runbookfile.Entry) ([]Running, error) {
+	work, err := workdir.Path(path)
+	if err != nil {
+		return nil, err
+	}
+
 	var found []Running
 	for _, entry := range entries {
-		st, err := state.Read(state.File(path, entry.Name))
+		st, err := state.Read(state.File(work, entry.Name))
 		if errors.Is(err, fs.ErrNotExist) {
 			continue
 		}

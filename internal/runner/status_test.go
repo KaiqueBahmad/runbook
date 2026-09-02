@@ -13,8 +13,8 @@ import (
 )
 
 func TestStatus(t *testing.T) {
-	project := t.TempDir()
-	path := filepath.Join(project, "runbook.yml")
+	path, store := testProject(t)
+	project := filepath.Dir(path)
 	entries := []runbookfile.Entry{
 		{Name: "web/server", Run: "sleep 30"},
 		{Name: "never-started", Run: "sleep 30"},
@@ -22,16 +22,16 @@ func TestStatus(t *testing.T) {
 	}
 
 	// One running, one never started, and one whose process is long gone.
-	if _, err := startEntry(entries[0], project, state.File(path, "web/server"), ipc.Addr(path, "web/server")); err != nil {
+	if _, err := startEntry(entries[0], project, state.File(store, "web/server"), ipc.Addr(store, "web/server")); err != nil {
 		t.Fatalf("startEntry(): %v", err)
 	}
-	st, err := state.Read(state.File(path, "web/server"))
+	st, err := state.Read(state.File(store, "web/server"))
 	if err != nil {
 		t.Fatalf("state.Read(): %v", err)
 	}
 	t.Cleanup(func() { syscall.Kill(-st.Group(), syscall.SIGKILL) })
 
-	if err := state.Write(state.File(path, "gone"), newState(0x7FFFFFFF, "1")); err != nil {
+	if err := state.Write(state.File(store, "gone"), newState(0x7FFFFFFF, "1")); err != nil {
 		t.Fatalf("state.Write(): %v", err)
 	}
 

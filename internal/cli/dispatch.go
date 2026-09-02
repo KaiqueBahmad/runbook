@@ -9,7 +9,6 @@ import (
 	"runbook/internal/ipc"
 	"runbook/internal/runbookfile"
 	"runbook/internal/runner"
-	"runbook/internal/workdir"
 )
 
 // Main carries out what the command line asked for, and gives back the status
@@ -93,14 +92,7 @@ func Main(args []string) int {
 		return code
 	}
 
-	// No command at all opens the panel. It works with what is running, so it
-	// forgets what has ended the way the other commands of that kind do.
-	if err := runner.Sweep(in.path); err != nil {
-		fmt.Fprintf(os.Stderr, "runbook: could not tidy up: %v\n", err)
-	}
-	if _, err := workdir.Ensure(in.path); err != nil {
-		return report(err)
-	}
+	// No command at all opens the panel, which looks after itself from there.
 	return report(gui.Open(in.path, entries))
 }
 

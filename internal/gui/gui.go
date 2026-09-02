@@ -23,12 +23,15 @@ import (
 	"runbook/internal/runbookfile"
 	"runbook/internal/runner"
 	"runbook/internal/state"
+	"runbook/internal/workdir"
 )
 
-// draw is how often the window catches up with what the commands are saying.
-// It is the output that arrives on its own; what a command is doing is only
-// ever looked at when someone asks.
-const draw = 200 * time.Millisecond
+// draw is how often the window catches up with what the commands are saying,
+// and check how often it goes and sees what they are doing.
+const (
+	draw  = 200 * time.Millisecond
+	check = time.Second
+)
 
 // how a command stands, which is the whole of what says which buttons a person
 // can press on it.
@@ -76,6 +79,7 @@ func (c *command) mark() string {
 // safe to, and comes back through fyne.Do for the rest.
 type panel struct {
 	path    string
+	store   string // where Runbook keeps what it knows about this runbook.yml
 	entries []runbookfile.Entry
 	byName  map[string]*command
 	folders *folders
@@ -102,7 +106,11 @@ type panel struct {
 
 // Open shows the panel for a runbook.yml, and returns once it is closed.
 func Open(path string, entries []runbookfile.Entry) error {
-	p := newPanel(path, entries)
+	store, err := workdir.Ensure(path)
+	if err != nil {
+		return err
+	}
+	p := newPanel(path, store, entries)
 
 	a := app.New()
 	a.Settings().SetTheme(folderIcons{theme.Current()})
@@ -111,7 +119,10 @@ func Open(path string, entries []runbookfile.Entry) error {
 	p.win.SetContent(p.content())
 	p.win.Resize(fyne.NewSize(1000, 640))
 
-	// What is running now, and what there is to listen to.
+	// Forget what has ended since anyone last looked, and then take in what is
+	// running now. Housekeeping must not stand between someone and their
+	// commands, so a sweep that will not go through is left where it is.
+	runner.Sweep(p.path)
 	p.refresh()
 
 	done := make(chan struct{})
@@ -129,9 +140,10 @@ func Open(path string, entries []runbookfile.Entry) error {
 	return nil
 }
 
-func newPanel(path string, entries []runbookfile.Entry) *panel {
+func newPanel(path, store string, entries []runbookfile.Entry) *panel {
 	p := &panel{
 		path:    path,
+		store:   store,
 		entries: entries,
 		byName:  make(map[string]*command, len(entries)),
 		folders: newFolders(entries),
@@ -168,22 +180,18 @@ func (p *panel) content() fyne.CanvasObject {
 	return container.NewBorder(p.bar(), nil, nil, nil, split)
 }
 
-// bar is the top of the window: which runbook.yml it is working on, how much
-// of it is running, and the button that goes and looks again.
+// bar is the top of the window: which runbook.yml it is working on, and how
+// much of it is running.
 func (p *panel) bar() fyne.CanvasObject {
 	where := widget.NewLabel(shorten(p.path))
 	where.TextStyle = fyne.TextStyle{Bold: true}
 
-	// The state of the commands is what someone asked for last, so there is a
-	// button to ask again rather than a window that goes and looks by itself.
-	// What that button is for is the count beside it.
 	p.count = widget.NewLabel(p.tally())
 	p.count.TextStyle = fyne.TextStyle{Italic: true}
-	refresh := widget.NewButtonWithIcon("Refresh", theme.ViewRefreshIcon(), p.refresh)
 
 	bar := container.NewBorder(nil, nil,
 		container.NewHBox(widget.NewIcon(theme.FileIcon()), where),
-		container.NewHBox(p.count, refresh),
+		p.count,
 	)
 	return container.NewVBox(bar, widget.NewSeparator())
 }
@@ -423,14 +431,11 @@ func (p *panel) work(do func() error, done func()) {
 	}()
 }
 
-// refresh is the one thing that goes and looks: what the state files say is
-// running now, and which broadcasters there are to hear. Nothing else in the
-// window finds out on its own, so what is on screen is what was asked for.
+// refresh goes and looks: what the state files say is running now, and which
+// broadcasters there are to hear. It is what the window does on its own every
+// second, so that a command started or stopped from a terminal turns up here
+// without anyone asking.
 func (p *panel) refresh() {
-	// Housekeeping must not stand between someone and their commands, so a
-	// sweep that will not go through is left where it is.
-	runner.Sweep(p.path)
-
 	for _, c := range p.byName {
 		p.look(c)
 		p.listen(c)
@@ -445,7 +450,7 @@ func (p *panel) look(c *command) {
 	if c.proc != nil {
 		return
 	}
-	st, err := state.Read(state.File(p.path, c.entry.Name))
+	st, err := state.Read(state.File(p.store, c.entry.Name))
 	if err != nil || !st.Alive() {
 		c.how, c.pid = idle, 0
 		return
@@ -460,7 +465,7 @@ func (p *panel) listen(c *command) {
 	if c.heard.Load() {
 		return
 	}
-	conn, err := ipc.Dial(ipc.Addr(p.path, c.entry.Name))
+	conn, err := ipc.Dial(ipc.Addr(p.store, c.entry.Name))
 	if err != nil {
 		return // nothing is broadcasting it
 	}
@@ -483,19 +488,24 @@ func (p *panel) show(name string) {
 }
 
 // redraw is the window catching up with what has changed: the marks in the
-// list, which buttons can be pressed, and the output on the right.
+// list, which buttons can be pressed, and what the top of it says.
+//
+// The output is left out of it. It is redrawn as it arrives, and setting a
+// thousand lines into the grid every second, for the sake of what is usually
+// nothing new, is work nobody would see.
 func (p *panel) redraw() {
 	p.tree.Refresh()
 	p.buttons()
 	p.count.SetText(p.tally())
-	p.drawOutput()
+	p.drawHead()
 }
 
-func (p *panel) drawOutput() {
+// drawHead names the command whose output is on the right, and says how it
+// stands.
+func (p *panel) drawHead() {
 	c := p.byName[p.shown]
 	if c == nil {
 		p.head.SetText("")
-		p.output.SetText("")
 		return
 	}
 	// A command that is not running has no mark, and no room taken up by one.
@@ -504,27 +514,43 @@ func (p *panel) drawOutput() {
 		head += "  " + mark
 	}
 	p.head.SetText(head)
+}
+
+func (p *panel) drawOutput() {
+	p.drawHead()
+
+	c := p.byName[p.shown]
+	if c == nil {
+		p.output.SetText("")
+		return
+	}
 	p.output.SetText(c.out.text())
 	p.scroll.ScrollToBottom()
 }
 
-// follow keeps the output on the right up with what is coming in. It is the
-// only thing the window does of its own accord, and it touches nothing but the
-// output: what the commands are doing waits to be asked for.
+// follow is the window keeping up on its own: with what the shown command is
+// saying, which arrives whenever it does, and with what every command is
+// doing, which it goes and looks at.
 func (p *panel) follow(done <-chan struct{}) {
-	tick := time.NewTicker(draw)
-	defer tick.Stop()
+	drawing := time.NewTicker(draw)
+	defer drawing.Stop()
+	checking := time.NewTicker(check)
+	defer checking.Stop()
 
 	for {
 		select {
 		case <-done:
 			return
-		case <-tick.C:
+
+		case <-drawing.C:
 			fyne.Do(func() {
 				if c := p.byName[p.shown]; c != nil && c.out.fresh() {
 					p.drawOutput()
 				}
 			})
+
+		case <-checking.C:
+			fyne.Do(p.refresh)
 		}
 	}
 }

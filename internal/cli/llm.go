@@ -72,8 +72,9 @@ what the command said before you attached is gone for good, and there is no log
 file anywhere to read instead. It ends when the command does. If you need all
 of a command's output, use run.
 
-Runbook keeps what it knows in a .runbook directory beside the runbook.yml, and
-that directory ignores itself in git. Nothing is written anywhere else.
+Runbook keeps what it knows in a .runbook directory in the home directory of
+whoever is running it, one directory per runbook.yml. It writes nothing into the
+project itself, so a project is left exactly as it was found.
 
 Do not run runbook with no command: that opens a window and blocks until
 someone closes it.

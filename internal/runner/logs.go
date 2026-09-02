@@ -6,6 +6,7 @@ import (
 
 	"runbook/internal/ipc"
 	"runbook/internal/runbookfile"
+	"runbook/internal/workdir"
 )
 
 // Logs shows what a started command writes, from now on. It connects to the
@@ -22,7 +23,12 @@ func Logs(path string, entries []runbookfile.Entry, name string, w io.Writer) er
 		return err
 	}
 
-	conn, err := ipc.Dial(ipc.Addr(path, entry.Name))
+	work, err := workdir.Path(path)
+	if err != nil {
+		return err
+	}
+
+	conn, err := ipc.Dial(ipc.Addr(work, entry.Name))
 	if err != nil {
 		return fmt.Errorf("nothing is broadcasting %s, run 'runbook start %s' first", entry.Name, entry.Name)
 	}

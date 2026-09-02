@@ -17,10 +17,10 @@ import (
 	"runbook/internal/workdir"
 )
 
-// dirExt names the directory Runbook keeps the state of one runbook.yml's
+// dirName names the directory Runbook keeps the state of one runbook.yml's
 // commands in, and fileExt the file of one command inside it.
 const (
-	dirExt  = ".state"
+	dirName = "state"
 	fileExt = ".pid"
 )
 
@@ -41,17 +41,16 @@ func (st State) Group() int {
 	return st.PID
 }
 
-// Dir is where the state of one runbook.yml's commands lives. It sits
-// inside .runbook, named after the file, so two runbook.yml files side by side
-// do not share it.
-func Dir(path string) string {
-	return filepath.Join(filepath.Dir(path), workdir.Name, filepath.Base(path)+dirExt)
+// Dir is where the state of one runbook.yml's commands lives, inside the
+// directory Runbook keeps for that file.
+func Dir(work string) string {
+	return filepath.Join(work, dirName)
 }
 
 // File is where one command's state lives. A command name is a path
 // already, so its folders become directories.
-func File(path, name string) string {
-	return filepath.Join(Dir(path), filepath.FromSlash(name)+fileExt)
+func File(work, name string) string {
+	return filepath.Join(Dir(work), filepath.FromSlash(name)+fileExt)
 }
 
 // Read reads back what start remembered. A command that was never started
@@ -161,8 +160,8 @@ func (st State) Uptime() time.Duration {
 // state file and a dead process the same way. What it catches that they do not
 // is what a command has left behind since it was renamed or taken out of the
 // runbook.yml, which nothing else ever looks at again.
-func Sweep(path string) error {
-	return workdir.SweepUnder(Dir(path), dead)
+func Sweep(work string) error {
+	return workdir.SweepUnder(Dir(work), dead)
 }
 
 // dead reports whether a state file is one whose process has gone.
