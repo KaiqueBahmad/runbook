@@ -283,20 +283,24 @@ func (p *panel) selection() *command {
 }
 
 // buttons is which of them the selected command can be given. A command that
-// is not running cannot be stopped, one that is cannot be started again, and
-// one that has said nothing has no output to show.
+// is not running cannot be stopped, and one that is cannot be started again.
 func (p *panel) buttons() {
 	c := p.selection()
-	if c == nil || p.busy {
+	if c == nil {
 		for _, b := range []*widget.Button{p.run, p.start, p.stop, p.logs} {
 			b.Disable()
 		}
 		return
 	}
-	able(p.run, c.how == idle)
-	able(p.start, c.how == idle)
-	able(p.stop, c.how != idle)
-	able(p.logs, c.how != idle || !c.out.empty())
+	able(p.run, !p.busy && c.how == idle)
+	able(p.start, !p.busy && c.how == idle)
+	able(p.stop, !p.busy && c.how != idle)
+
+	// Looking at what a command has said asks nothing of the command, so it is
+	// there whatever it is doing, and while Runbook is busy with the last
+	// thing it was asked for. A command that has said nothing shows nothing,
+	// which is itself worth being able to see.
+	p.logs.Enable()
 }
 
 func able(b *widget.Button, on bool) {
@@ -494,7 +498,12 @@ func (p *panel) drawOutput() {
 		p.output.SetText("")
 		return
 	}
-	p.head.SetText(p.shown + "  " + c.mark())
+	// A command that is not running has no mark, and no room taken up by one.
+	head := p.shown
+	if mark := c.mark(); mark != "" {
+		head += "  " + mark
+	}
+	p.head.SetText(head)
 	p.output.SetText(c.out.text())
 	p.scroll.ScrollToBottom()
 }

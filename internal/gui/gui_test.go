@@ -150,7 +150,7 @@ func TestButtons(t *testing.T) {
 			t.Error("tapping a folder neither opened nor closed it")
 		}
 		// The buttons still act on the command, which is what is picked.
-		wants(t, p, true, true, false, false)
+		wants(t, p, true, true, false, true)
 	})
 
 	t.Run("closing a folder leaves its command picked", func(t *testing.T) {
@@ -177,9 +177,9 @@ func TestButtons(t *testing.T) {
 	t.Run("a command that is not running", func(t *testing.T) {
 		p := testPanel(t, "api:\n  run: sleep 30\n")
 		p.tree.Select("api")
-		// It can be set going either way, there is nothing to stop, and it has
-		// said nothing there would be to show.
-		wants(t, p, true, true, false, false)
+		// It can be set going either way, and there is nothing to stop. Its
+		// output can be looked at even though it has said nothing yet.
+		wants(t, p, true, true, false, true)
 	})
 
 	t.Run("what a command said outlives it", func(t *testing.T) {
@@ -215,7 +215,9 @@ func TestButtons(t *testing.T) {
 		p.busy = true
 		p.buttons()
 
-		wants(t, p, false, false, false, false)
+		// Nothing can be asked of a command until Runbook is done with the
+		// last thing, but what it has said is there to read meanwhile.
+		wants(t, p, false, false, false, true)
 	})
 }
 
