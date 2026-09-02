@@ -32,6 +32,12 @@ func Main(args []string) int {
 		fmt.Print(completionScript(in.rest[0]))
 		return 0
 
+	// iamllm is a language model asking what Runbook is, which the runbook.yml
+	// of whatever project it happens to be in has no part in answering.
+	case cmdIAmLLM:
+		fmt.Print(primer)
+		return 0
+
 	// broadcast is Runbook talking to itself: start left it holding one end of
 	// a pipe, and all it needs is the address to hand what comes down it to.
 	case cmdBroadcast:

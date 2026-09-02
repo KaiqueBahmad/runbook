@@ -40,6 +40,17 @@ To print the usage text and exit without opening a window, pass `--help` (or `-h
 runbook --help
 ```
 
+If the one reading this is a language model rather than a person, there is a page
+written for it:
+
+```
+runbook iamllm
+```
+
+It says what Runbook is, how a runbook.yml is written, and what each command does
+to whatever is reading its output. It needs no runbook.yml of its own, so it is
+also what to read before writing one.
+
 On startup Runbook also creates a `.runbook` directory next to the runbook.yml
 if it isn't there already — so it lands in whatever folder the file lives in.
 That's where Runbook keeps its own files, one set per project.

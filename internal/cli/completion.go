@@ -52,7 +52,7 @@ _runbook() {
 
     case "${#seen[@]}" in
         0)
-            COMPREPLY=($(compgen -W 'list run start stop status logs completion' -- "$cur"))
+            COMPREPLY=($(compgen -W 'list run start stop status logs completion iamllm' -- "$cur"))
             ;;
         1)
             case "${seen[0]}" in
@@ -87,6 +87,7 @@ _runbook() {
         'status:show which commands are running'
         'logs:listen to what a started command writes'
         'completion:print a completion script for bash, zsh or fish'
+        'iamllm:print what a language model needs to know about Runbook'
     )
 
     _arguments -C \
@@ -168,6 +169,8 @@ complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a logs \
     -d 'listen to what a started command writes'
 complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a completion \
     -d 'print a completion script for bash, zsh or fish'
+complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a iamllm \
+    -d 'print what a language model needs to know about Runbook'
 complete -c runbook -n '__runbook_argument_of completion' \
     -a 'bash zsh fish' -d shell
 complete -c runbook -n '__runbook_argument_of run start stop logs' \

@@ -37,6 +37,7 @@ Commands:
   status       show which commands are running, and at which process id
   logs <name>  listen to what a started command writes, from now on
   completion   print a completion script for bash, zsh or fish
+  iamllm       print what a language model needs to know about Runbook
 
 Options:
   -f, --file   path of the runbook.yml to open
@@ -61,6 +62,7 @@ const (
 	cmdStatus     = "status"
 	cmdLogs       = "logs"
 	cmdCompletion = "completion"
+	cmdIAmLLM     = "iamllm"
 )
 
 // cmdBroadcast is Runbook talking to itself, one broadcaster per started
@@ -70,7 +72,7 @@ const (
 const cmdBroadcast = runner.BroadcastCommand
 
 // commands is every command runbook offers.
-var commands = []string{cmdList, cmdRun, cmdStart, cmdStop, cmdStatus, cmdLogs, cmdCompletion}
+var commands = []string{cmdList, cmdRun, cmdStart, cmdStop, cmdStatus, cmdLogs, cmdCompletion, cmdIAmLLM}
 
 // named are the commands that take the name of a command in the runbook.yml.
 var named = []string{cmdRun, cmdStart, cmdStop, cmdLogs}
