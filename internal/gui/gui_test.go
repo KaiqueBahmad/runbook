@@ -319,3 +319,41 @@ func waitFor(t *testing.T, done func() bool) {
 	}
 	t.Fatal("waited two seconds and it never happened")
 }
+
+func TestHeader(t *testing.T) {
+	t.Run("says what is running, and of how much", func(t *testing.T) {
+		p := testPanel(t, "api:\n  run: true\n\nweb:\n  run: true\n\nlint:\n  run: true\n")
+
+		if got := p.count.Text; got != "nothing running" {
+			t.Errorf("the header says %q, want %q", got, "nothing running")
+		}
+
+		p.byName["api"].how = started
+		p.redraw()
+		if got, want := p.count.Text, "1 of 3 commands running"; got != want {
+			t.Errorf("the header says %q, want %q", got, want)
+		}
+
+		p.byName["web"].how = running
+		p.redraw()
+		if got, want := p.count.Text, "2 of 3 commands running"; got != want {
+			t.Errorf("the header says %q, want %q", got, want)
+		}
+	})
+
+	t.Run("a path is written the way a person writes it", func(t *testing.T) {
+		home := t.TempDir()
+		t.Setenv("HOME", home)
+
+		if got, want := shorten(filepath.Join(home, "project", "runbook.yml")), "~/project/runbook.yml"; got != want {
+			t.Errorf("shorten() = %q, want %q", got, want)
+		}
+		if got := shorten("/etc/runbook.yml"); got != "/etc/runbook.yml" {
+			t.Errorf("shorten() = %q, want a path outside home left alone", got)
+		}
+		// A directory that only starts the same is not inside it.
+		if got, want := shorten(home+"-else/runbook.yml"), home+"-else/runbook.yml"; got != want {
+			t.Errorf("shorten() = %q, want %q", got, want)
+		}
+	})
+}

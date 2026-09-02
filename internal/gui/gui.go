@@ -5,6 +5,7 @@ package gui
 import (
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -81,6 +82,7 @@ type panel struct {
 
 	win    fyne.Window
 	tree   *widget.Tree
+	count  *widget.Label
 	head   *widget.Label
 	output *widget.TextGrid
 	scroll *container.Scroll
@@ -163,12 +165,63 @@ func (p *panel) content() fyne.CanvasObject {
 	split := container.NewHSplit(left, right)
 	split.Offset = 0.3
 
+	return container.NewBorder(p.bar(), nil, nil, nil, split)
+}
+
+// bar is the top of the window: which runbook.yml it is working on, how much
+// of it is running, and the button that goes and looks again.
+func (p *panel) bar() fyne.CanvasObject {
+	where := widget.NewLabel(shorten(p.path))
+	where.TextStyle = fyne.TextStyle{Bold: true}
+
 	// The state of the commands is what someone asked for last, so there is a
 	// button to ask again rather than a window that goes and looks by itself.
+	// What that button is for is the count beside it.
+	p.count = widget.NewLabel(p.tally())
+	p.count.TextStyle = fyne.TextStyle{Italic: true}
 	refresh := widget.NewButtonWithIcon("Refresh", theme.ViewRefreshIcon(), p.refresh)
-	bar := container.NewBorder(nil, nil, widget.NewLabel(p.path), refresh)
 
-	return container.NewBorder(bar, nil, nil, nil, split)
+	bar := container.NewBorder(nil, nil,
+		container.NewHBox(widget.NewIcon(theme.FileIcon()), where),
+		container.NewHBox(p.count, refresh),
+	)
+	return container.NewVBox(bar, widget.NewSeparator())
+}
+
+// tally is how much of the runbook.yml is running, for the top of the window.
+func (p *panel) tally() string {
+	going := 0
+	for _, c := range p.byName {
+		if c.how != idle {
+			going++
+		}
+	}
+	switch going {
+	case 0:
+		return "nothing running"
+	case 1:
+		return "1 of " + count(len(p.entries)) + " running"
+	default:
+		return fmt.Sprintf("%d of %s running", going, count(len(p.entries)))
+	}
+}
+
+// count is a number of commands, said the way a person would.
+func count(n int) string {
+	if n == 1 {
+		return "1 command"
+	}
+	return fmt.Sprintf("%d commands", n)
+}
+
+// shorten is a path as the person who typed it would write it, with their home
+// directory as the ~ they call it.
+func shorten(path string) string {
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" || !strings.HasPrefix(path, home+string(os.PathSeparator)) {
+		return path
+	}
+	return "~" + path[len(home):]
 }
 
 // newNode and fillNode are one line of the list: the name of a command or of a
@@ -430,6 +483,7 @@ func (p *panel) show(name string) {
 func (p *panel) redraw() {
 	p.tree.Refresh()
 	p.buttons()
+	p.count.SetText(p.tally())
 	p.drawOutput()
 }
 
