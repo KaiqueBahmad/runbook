@@ -107,6 +107,22 @@ lint:
 	}
 }
 
+// TestFoldersStartClosed is that a window opens on the folders of a project
+// rather than on every command in it.
+func TestFoldersStartClosed(t *testing.T) {
+	p := testPanel(t, "services/api:\n  run: true\n\nlint:\n  run: true\n")
+
+	if p.tree.IsBranchOpen("services") {
+		t.Error("the folders are open before anyone has opened one")
+	}
+	if !p.onScreen("lint") {
+		t.Error("a command that is in no folder is out of sight")
+	}
+	if p.onScreen("services/api") {
+		t.Error("a command inside a folder is in sight while the folder is shut")
+	}
+}
+
 func TestButtons(t *testing.T) {
 	t.Run("nothing is selected", func(t *testing.T) {
 		p := testPanel(t, "api:\n  run: sleep 30\n")
@@ -117,6 +133,45 @@ func TestButtons(t *testing.T) {
 		p := testPanel(t, "web/one:\n  run: true\n")
 		p.tree.Select("web")
 		wants(t, p, false, false, false, false)
+	})
+
+	t.Run("a folder cannot be picked", func(t *testing.T) {
+		p := testPanel(t, "web/one:\n  run: true\n\nweb/two:\n  run: true\n")
+		p.tree.Select("web/one")
+
+		// Tapping a folder is what opens and closes it, and that is all it is.
+		open := p.tree.IsBranchOpen("web")
+		p.tree.Select("web")
+
+		if p.picked != "web/one" {
+			t.Errorf("tapping a folder left %q picked, want the command to have stayed", p.picked)
+		}
+		if p.tree.IsBranchOpen("web") == open {
+			t.Error("tapping a folder neither opened nor closed it")
+		}
+		// The buttons still act on the command, which is what is picked.
+		wants(t, p, true, true, false, false)
+	})
+
+	t.Run("closing a folder leaves its command picked", func(t *testing.T) {
+		p := testPanel(t, "web/one:\n  run: true\n")
+		p.tree.Select("web/one")
+
+		p.tree.Select("web") // closes it, and the command goes out of view
+		if p.tree.IsBranchOpen("web") {
+			t.Fatal("the folder is still open")
+		}
+		if p.picked != "web/one" {
+			t.Errorf("%q is picked, want the command that went out of view", p.picked)
+		}
+
+		p.tree.Select("web") // and open it again
+		if !p.tree.IsBranchOpen("web") {
+			t.Fatal("the folder did not open again")
+		}
+		if p.picked != "web/one" {
+			t.Errorf("%q is picked, want the command to have come back with it", p.picked)
+		}
 	})
 
 	t.Run("a command that is not running", func(t *testing.T) {

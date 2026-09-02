@@ -5,6 +5,7 @@ package gui
 import (
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -102,6 +103,8 @@ func Open(path string, entries []runbookfile.Entry) error {
 	p := newPanel(path, entries)
 
 	a := app.New()
+	a.Settings().SetTheme(folderIcons{theme.Current()})
+
 	p.win = a.NewWindow("Runbook — " + path)
 	p.win.SetContent(p.content())
 	p.win.Resize(fyne.NewSize(1000, 640))
@@ -141,9 +144,7 @@ func newPanel(path string, entries []runbookfile.Entry) *panel {
 // to the one that is selected under them, and its output on the right.
 func (p *panel) content() fyne.CanvasObject {
 	p.tree = widget.NewTree(p.folders.childrenOf, p.folders.isBranch, newNode, p.fillNode)
-	p.tree.OnSelected = func(node widget.TreeNodeID) { p.picked = node; p.buttons() }
-	p.tree.OnUnselected = func(widget.TreeNodeID) { p.picked = ""; p.buttons() }
-	p.tree.OpenAllBranches()
+	p.tree.OnSelected = p.pick
 
 	p.run = widget.NewButtonWithIcon("Run", theme.MediaPlayIcon(), p.doRun)
 	p.start = widget.NewButtonWithIcon("Start", theme.MediaFastForwardIcon(), p.doStart)
@@ -189,8 +190,41 @@ func (p *panel) fillNode(node widget.TreeNodeID, _ bool, o fyne.CanvasObject) {
 	mark.SetText("")
 }
 
-// selection is the command the buttons act on, and is nothing when what is
-// selected is a folder, or when nothing is.
+// pick takes what was tapped in the list. A folder is not a command and cannot
+// be picked: tapping one opens or closes it, and leaves the command that was
+// picked where it was.
+func (p *panel) pick(node widget.TreeNodeID) {
+	if p.byName[node] != nil {
+		p.picked = node
+		p.buttons()
+		return
+	}
+
+	p.tree.Unselect(node)
+	p.tree.ToggleBranch(node)
+	// Selecting a node scrolls it into view, opening every folder above it on
+	// the way, which would undo the very tap that closed one. So the mark goes
+	// back on the picked command only where the tap has left it on screen; it
+	// is the command the buttons act on either way.
+	if p.picked != "" && p.onScreen(p.picked) {
+		p.tree.Select(p.picked)
+	}
+}
+
+// onScreen reports whether a node is in view, which it is when every folder
+// above it is open.
+func (p *panel) onScreen(node string) bool {
+	for cut := strings.LastIndex(node, "/"); cut >= 0; cut = strings.LastIndex(node, "/") {
+		node = node[:cut]
+		if !p.tree.IsBranchOpen(node) {
+			return false
+		}
+	}
+	return true
+}
+
+// selection is the command the buttons act on, and is nothing when nothing has
+// been picked yet.
 func (p *panel) selection() *command {
 	return p.byName[p.picked]
 }
