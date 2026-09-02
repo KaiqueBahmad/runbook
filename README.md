@@ -23,13 +23,13 @@ Runbook replaces that ritual with a single file and a single window.
 runbook
 ```
 
-With no arguments, Runbook looks for a `Runbookfile` in the current directory. To point it at a different file, pass its path after `-f` (or `--file`):
+With no arguments, Runbook looks for a `runbook.yml` in the current directory. To point it at a different file, pass its path after `-f` (or `--file`):
 
 ```
-runbook -f path/to/other-runbookfile
+runbook -f path/to/other.yml
 ```
 
-The path only counts when it comes after the flag — a bare `runbook path/to/other-runbookfile` exits with a usage error, and so does `-f` with nothing after it.
+The path only counts when it comes after the flag — a bare `runbook path/to/other.yml` exits with a usage error, and so does `-f` with nothing after it.
 
 Relative paths are resolved against the current directory, so Runbook always works
 with the full path to the file.
@@ -40,7 +40,7 @@ To print the usage text and exit without opening a window, pass `--help` (or `-h
 runbook --help
 ```
 
-On startup Runbook also creates a `.runbook` directory next to the Runbookfile
+On startup Runbook also creates a `.runbook` directory next to the runbook.yml
 if it isn't there already — so it lands in whatever folder the file lives in.
 That's where Runbook keeps its own files, one set per project.
 
@@ -88,7 +88,7 @@ internal/runner/       running a command here, starting one in the background, s
 internal/runbookfile/  the file format, read into the entries the rest of the program works with
 internal/state/        what Runbook remembers of a started command, so a later stop finds the process
 internal/ipc/          the address a started command's output is broadcast at, and the broadcaster
-internal/workdir/      the .runbook directory beside the Runbookfile, and tidying what is left in it
+internal/workdir/      the .runbook directory beside the runbook.yml, and tidying what is left in it
 ```
 
 Everything but the entry point sits under `internal/`, so none of it can be imported from

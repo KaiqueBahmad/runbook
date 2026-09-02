@@ -61,7 +61,7 @@ func TestLogs(t *testing.T) {
 	entries := []runbookfile.Entry{{Name: "api", Run: "sleep 30"}}
 
 	t.Run("what is written", func(t *testing.T) {
-		path := filepath.Join(t.TempDir(), "Runbookfile")
+		path := filepath.Join(t.TempDir(), "runbook.yml")
 		w := broadcastTest(t, ipc.Addr(path, "api"))
 
 		var out heard
@@ -85,7 +85,7 @@ func TestLogs(t *testing.T) {
 	})
 
 	t.Run("not running", func(t *testing.T) {
-		path := filepath.Join(t.TempDir(), "Runbookfile")
+		path := filepath.Join(t.TempDir(), "runbook.yml")
 
 		err := Logs(path, entries, "api", io.Discard)
 		if err == nil {
@@ -97,7 +97,7 @@ func TestLogs(t *testing.T) {
 	})
 
 	t.Run("unknown name", func(t *testing.T) {
-		path := filepath.Join(t.TempDir(), "Runbookfile")
+		path := filepath.Join(t.TempDir(), "runbook.yml")
 
 		err := Logs(path, entries, "web", io.Discard)
 		if err == nil || !strings.Contains(err.Error(), "no command named") {

@@ -226,7 +226,7 @@ func TestRead(t *testing.T) {
 	}
 
 	t.Run("reads the commands", func(t *testing.T) {
-		path := write(t, "Runbookfile", "api:\n  run: npm start\n")
+		path := write(t, "runbook.yml", "api:\n  run: npm start\n")
 
 		got, err := Read(path)
 		if err != nil {
@@ -286,13 +286,13 @@ func TestFind(t *testing.T) {
 
 // The example file is the documentation for the syntax, so it has to stay
 // something Runbook can actually read.
-func TestRunbookfileExample(t *testing.T) {
-	entries, err := Read(filepath.Join("..", "..", "Runbookfile"))
+func TestExampleFile(t *testing.T) {
+	entries, err := Read(filepath.Join("..", "..", "runbook.yml"))
 	if err != nil {
 		t.Fatalf("Read(): %v", err)
 	}
 	if len(entries) == 0 {
-		t.Error("Runbookfile has no commands")
+		t.Error("runbook.yml has no commands")
 	}
 }
 
@@ -356,7 +356,7 @@ func TestPrintNamesWidth(t *testing.T) {
 func TestCheck(t *testing.T) {
 	dir := t.TempDir()
 
-	file := filepath.Join(dir, "Runbookfile")
+	file := filepath.Join(dir, "runbook.yml")
 	if err := os.WriteFile(file, []byte("api: echo hi\n"), 0o644); err != nil {
 		t.Fatalf("writing %s: %v", file, err)
 	}

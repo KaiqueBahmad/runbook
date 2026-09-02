@@ -5,7 +5,7 @@ import (
 	"runbook/internal/state"
 )
 
-// Sweep forgets what the commands of a Runbookfile have left behind since they
+// Sweep forgets what the commands of a runbook.yml have left behind since they
 // ended: the state files of processes that are gone, and the addresses nobody
 // is broadcasting at any more.
 //

@@ -33,14 +33,14 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// testPanel opens a panel on a Runbookfile written in a directory of its own,
+// testPanel opens a panel on a runbook.yml written in a directory of its own,
 // laid out but never shown: everything the buttons do happens without one.
 func testPanel(t *testing.T, file string) *panel {
 	t.Helper()
 
 	test.NewTempApp(t)
 
-	path := filepath.Join(t.TempDir(), "Runbookfile")
+	path := filepath.Join(t.TempDir(), "runbook.yml")
 	if err := os.WriteFile(path, []byte(file), 0o600); err != nil {
 		t.Fatalf("writing %s: %v", path, err)
 	}
@@ -88,7 +88,7 @@ func shown(tree *widget.Tree, node widget.TreeNodeID) []string {
 	return found
 }
 
-// TestList is that the window shows the Runbookfile, all of it: every command
+// TestList is that the window shows the runbook.yml, all of it: every command
 // is there from the moment it opens, whether or not anything is running.
 func TestList(t *testing.T) {
 	p := testPanel(t, `services/api:

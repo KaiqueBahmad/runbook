@@ -18,7 +18,7 @@ type folders struct {
 	children map[string][]string
 }
 
-// newFolders puts every command of a Runbookfile in its folder, keeping the
+// newFolders puts every command of a runbook.yml in its folder, keeping the
 // order the file lists them in.
 func newFolders(entries []runbookfile.Entry) *folders {
 	f := &folders{children: map[string][]string{}}

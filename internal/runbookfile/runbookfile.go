@@ -1,4 +1,4 @@
-// Package runbookfile reads the Runbookfile: the file a project lists its
+// Package runbookfile reads the runbook.yml: the file a project lists its
 // commands in, and the entries that come out of it.
 package runbookfile
 
@@ -13,12 +13,12 @@ import (
 	"unicode/utf8"
 )
 
-// Entry is one command from the Runbookfile.
+// Entry is one command from the runbook.yml.
 type Entry struct {
 	Name        string            // slashes group entries into folders, e.g. "services/api"
 	Run         string            // shell command
 	Description string            // optional one line summary of what the command does
-	Dir         string            // optional working directory, relative to the Runbookfile's directory
+	Dir         string            // optional working directory, relative to the runbook.yml's directory
 	Env         map[string]string // optional extra environment variables, nil if none
 }
 
@@ -29,14 +29,14 @@ const (
 	fieldEnv         = "env"
 )
 
-// Parse reads a Runbookfile and returns the commands it lists. A command is a
+// Parse reads a runbook.yml and returns the commands it lists. A command is a
 // name, and under it the fields it is made of:
 //
 //	name:                the name of the command, slashes group it into folders
 //	  run:               the shell command to run
 //	  description:       optional one line summary of what it does
 //	  dir:               optional working directory, relative to the
-//	                     Runbookfile's own, and defaulting to it
+//	                     runbook.yml's own, and defaulting to it
 //	  env:               optional extra environment variables
 //	    KEY: value
 //
@@ -225,9 +225,7 @@ func checkName(name string) error {
 	return nil
 }
 
-// readRunbookfile parses the Runbookfile at path. Parse errors carry the file
-// name in front of the line they come from.
-// Find looks up a command by the name a Runbookfile gave it.
+// Find looks up a command by the name a runbook.yml gave it.
 func Find(entries []Entry, name string) (Entry, error) {
 	for _, entry := range entries {
 		if entry.Name == name {
@@ -242,12 +240,12 @@ func Check(path string) error {
 	info, err := os.Stat(path)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			return fmt.Errorf("no runbookfile at %s", path)
+			return fmt.Errorf("no runbook.yml at %s", path)
 		}
 		return err
 	}
 	if info.IsDir() {
-		return fmt.Errorf("%s is a directory, not a runbookfile", path)
+		return fmt.Errorf("%s is a directory, not a runbook.yml", path)
 	}
 	if !info.Mode().IsRegular() {
 		return fmt.Errorf("%s is not a regular file", path)
@@ -255,7 +253,7 @@ func Check(path string) error {
 	return nil
 }
 
-// Read opens the Runbookfile at path and parses it.
+// Read opens the runbook.yml at path and parses it.
 func Read(path string) ([]Entry, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -270,7 +268,7 @@ func Read(path string) ([]Entry, error) {
 	return entries, nil
 }
 
-// PrintNames writes one command per line, in the order the Runbookfile lists
+// PrintNames writes one command per line, in the order the runbook.yml lists
 // them: the name, then its description. A command with no description is the
 // name on its own.
 //

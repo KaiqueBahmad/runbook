@@ -10,7 +10,7 @@ func TestEnsure(t *testing.T) {
 	t.Run("creates the directory next to the runbookfile", func(t *testing.T) {
 		project := t.TempDir()
 
-		dir, err := Ensure(filepath.Join(project, "Runbookfile"))
+		dir, err := Ensure(filepath.Join(project, "runbook.yml"))
 		if err != nil {
 			t.Fatalf("Ensure(): %v", err)
 		}
@@ -47,7 +47,7 @@ func TestEnsure(t *testing.T) {
 			t.Fatalf("writing %s: %v", file, err)
 		}
 
-		if _, err := Ensure(filepath.Join(project, "Runbookfile")); err != nil {
+		if _, err := Ensure(filepath.Join(project, "runbook.yml")); err != nil {
 			t.Fatalf("Ensure(): %v", err)
 		}
 		if _, err := os.Stat(file); err != nil {
@@ -67,7 +67,7 @@ func TestEnsure(t *testing.T) {
 			t.Fatalf("writing %s: %v", ignore, err)
 		}
 
-		if _, err := Ensure(filepath.Join(project, "Runbookfile")); err != nil {
+		if _, err := Ensure(filepath.Join(project, "runbook.yml")); err != nil {
 			t.Fatalf("Ensure(): %v", err)
 		}
 		got, err := os.ReadFile(ignore)
@@ -87,7 +87,7 @@ func TestEnsure(t *testing.T) {
 			t.Fatalf("writing %s: %v", path, err)
 		}
 
-		if _, err := Ensure(filepath.Join(project, "Runbookfile")); err == nil {
+		if _, err := Ensure(filepath.Join(project, "runbook.yml")); err == nil {
 			t.Fatal("Ensure() error = nil, want an error")
 		}
 	})

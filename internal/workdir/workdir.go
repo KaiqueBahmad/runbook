@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 )
 
-// Name is the directory Runbook creates alongside the Runbookfile to keep its
+// Name is the directory Runbook creates alongside the runbook.yml to keep its
 // own files.
 const Name = ".runbook"
 
@@ -19,12 +19,12 @@ const Name = ".runbook"
 // project's git status.
 const gitignoreAll = "*\n"
 
-// Path is where Runbook keeps the files of the Runbookfile at path.
+// Path is where Runbook keeps the files of the runbook.yml at path.
 func Path(path string) string {
 	return filepath.Join(filepath.Dir(path), Name)
 }
 
-// Ensure returns the path of Runbook's directory next to the Runbookfile at
+// Ensure returns the path of Runbook's directory next to the runbook.yml at
 // path, creating it if it does not exist yet along with the .gitignore that
 // keeps its contents out of the project's repository.
 func Ensure(path string) (string, error) {

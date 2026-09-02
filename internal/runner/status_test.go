@@ -14,7 +14,7 @@ import (
 
 func TestStatus(t *testing.T) {
 	project := t.TempDir()
-	path := filepath.Join(project, "Runbookfile")
+	path := filepath.Join(project, "runbook.yml")
 	entries := []runbookfile.Entry{
 		{Name: "web/server", Run: "sleep 30"},
 		{Name: "never-started", Run: "sleep 30"},

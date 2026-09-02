@@ -11,25 +11,25 @@ import (
 )
 
 func TestStatePaths(t *testing.T) {
-	path := "/project/Runbookfile"
+	path := "/project/runbook.yml"
 
-	t.Run("the state of one Runbookfile stays together", func(t *testing.T) {
-		want := "/project/.runbook/Runbookfile.state"
+	t.Run("the state of one runbook.yml stays together", func(t *testing.T) {
+		want := "/project/.runbook/runbook.yml.state"
 		if got := Dir(path); got != want {
 			t.Errorf("Dir() = %q, want %q", got, want)
 		}
 	})
 
 	t.Run("folders in a name become directories", func(t *testing.T) {
-		want := "/project/.runbook/Runbookfile.state/services/api.pid"
+		want := "/project/.runbook/runbook.yml.state/services/api.pid"
 		if got := File(path, "services/api"); got != want {
 			t.Errorf("File() = %q, want %q", got, want)
 		}
 	})
 
-	t.Run("two Runbookfiles side by side do not share it", func(t *testing.T) {
+	t.Run("two runbook.yml files side by side do not share it", func(t *testing.T) {
 		if Dir(path) == Dir("/project/Other") {
-			t.Error("Dir() is the same for two different Runbookfiles")
+			t.Error("Dir() is the same for two different runbook.yml files")
 		}
 	})
 }
@@ -123,10 +123,10 @@ func TestStateUptime(t *testing.T) {
 
 func TestSweep(t *testing.T) {
 	project := t.TempDir()
-	path := filepath.Join(project, "Runbookfile")
+	path := filepath.Join(project, "runbook.yml")
 	dir := Dir(path)
 
-	t.Run("a Runbookfile that never started anything", func(t *testing.T) {
+	t.Run("a runbook.yml that never started anything", func(t *testing.T) {
 		if err := Sweep(path); err != nil {
 			t.Errorf("Sweep(): %v", err)
 		}

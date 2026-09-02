@@ -60,7 +60,7 @@ _runbook() {
                     COMPREPLY=($(compgen -W 'bash zsh fish' -- "$cur"))
                     ;;
                 run|start|stop|logs)
-                    # The names come from the Runbookfile being completed for,
+                    # The names come from the runbook.yml being completed for,
                     # asked of the very runbook being typed. bash has nowhere to
                     # show the description behind the tab, so it is cut off. A
                     # newline IFS keeps names with spaces in one piece.
@@ -80,7 +80,7 @@ _runbook() {
     local state prog=$words[1]
     local -a commands
     commands=(
-        'list:print the name of every command in the Runbookfile'
+        'list:print the name of every command in the runbook.yml'
         'run:run one command in this terminal'
         'start:run one command in the background'
         'stop:end a command that was started'
@@ -91,7 +91,7 @@ _runbook() {
 
     _arguments -C \
         '(-h --help)'{-h,--help}'[print this help and exit]' \
-        '(-f --file)'{-f,--file}'[Runbookfile to work on]:runbookfile:_files' \
+        '(-f --file)'{-f,--file}'[runbook.yml to work on]:file:_files' \
         '1: :->command' \
         '*:: :->argument'
 
@@ -153,9 +153,9 @@ end
 
 complete -c runbook -f
 complete -c runbook -s h -l help -d 'print this help and exit'
-complete -c runbook -s f -l file -r -F -d 'Runbookfile to work on'
+complete -c runbook -s f -l file -r -F -d 'runbook.yml to work on'
 complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a list \
-    -d 'print the name of every command in the Runbookfile'
+    -d 'print the name of every command in the runbook.yml'
 complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a run \
     -d 'run one command in this terminal'
 complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a start \

@@ -10,8 +10,8 @@ import (
 )
 
 func TestAddr(t *testing.T) {
-	path := "/home/kaique/project/Runbookfile"
-	want := "/home/kaique/project/.runbook/Runbookfile.sock/services/api.sock"
+	path := "/home/kaique/project/runbook.yml"
+	want := "/home/kaique/project/.runbook/runbook.yml.sock/services/api.sock"
 	if got := Addr(path, "services/api"); got != want {
 		t.Errorf("Addr(%q, %q) = %q, want %q", path, "services/api", got, want)
 	}
@@ -68,7 +68,7 @@ func TestListen(t *testing.T) {
 
 func TestSweep(t *testing.T) {
 	project := t.TempDir()
-	path := filepath.Join(project, "Runbookfile")
+	path := filepath.Join(project, "runbook.yml")
 
 	// One with a broadcaster behind it, one a killed broadcaster left behind.
 	live := Addr(path, "api")

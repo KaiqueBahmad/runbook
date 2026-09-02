@@ -17,7 +17,7 @@ import (
 	"runbook/internal/workdir"
 )
 
-// dirExt names the directory Runbook keeps the state of one Runbookfile's
+// dirExt names the directory Runbook keeps the state of one runbook.yml's
 // commands in, and fileExt the file of one command inside it.
 const (
 	dirExt  = ".state"
@@ -41,9 +41,9 @@ func (st State) Group() int {
 	return st.PID
 }
 
-// Dir is where the state of one Runbookfile's commands lives. It sits
-// inside .runbook, named after the Runbookfile, so two Runbookfiles side by
-// side do not share it.
+// Dir is where the state of one runbook.yml's commands lives. It sits
+// inside .runbook, named after the file, so two runbook.yml files side by side
+// do not share it.
 func Dir(path string) string {
 	return filepath.Join(filepath.Dir(path), workdir.Name, filepath.Base(path)+dirExt)
 }
@@ -152,15 +152,15 @@ func (st State) Uptime() time.Duration {
 	return time.Since(time.Unix(st.Since, 0)).Truncate(time.Second)
 }
 
-// Sweep forgets the commands of a Runbookfile that have ended since they were
+// Sweep forgets the commands of a runbook.yml that have ended since they were
 // started: the state files whose process is gone, and the folders left empty
-// once those are removed. A Runbookfile that never started anything sweeps
+// once those are removed. A runbook.yml that never started anything sweeps
 // clean without complaint.
 //
 // It is housekeeping, not correctness: every command already treats a missing
 // state file and a dead process the same way. What it catches that they do not
 // is what a command has left behind since it was renamed or taken out of the
-// Runbookfile, which nothing else ever looks at again.
+// runbook.yml, which nothing else ever looks at again.
 func Sweep(path string) error {
 	return workdir.SweepUnder(Dir(path), dead)
 }

@@ -22,7 +22,7 @@ type Process struct {
 	err   error
 }
 
-// Spawn starts one of a Runbookfile's commands with everything it says going
+// Spawn starts one of a runbook.yml's commands with everything it says going
 // to out, and returns as soon as it is going.
 //
 // The command leads a process group of its own, so stopping it reaches what a

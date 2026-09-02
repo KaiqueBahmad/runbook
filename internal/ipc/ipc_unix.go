@@ -23,7 +23,7 @@ import (
 //
 // TODO: write the Windows half of this, an ipc_windows.go with named pipes.
 
-// sockExt names both the directory the addresses of one Runbookfile's commands
+// sockExt names both the directory the addresses of one runbook.yml's commands
 // live in and the address of one command inside it.
 const sockExt = ".sock"
 
@@ -32,9 +32,9 @@ const sockExt = ".sock"
 // from the bind, which says nothing about which path was too long.
 const maxAddr = 100
 
-// dir is where the addresses of one Runbookfile's commands live. It sits
-// beside the directory of state files, named after the Runbookfile the same
-// way, so two Runbookfiles side by side do not share it.
+// dir is where the addresses of one runbook.yml's commands live. It sits
+// beside the directory of state files, named after the file the same way, so
+// two runbook.yml files side by side do not share it.
 func dir(path string) string {
 	return filepath.Join(filepath.Dir(path), workdir.Name, filepath.Base(path)+sockExt)
 }
@@ -76,7 +76,7 @@ func Dial(addr string) (net.Conn, error) {
 	return net.Dial("unix", addr)
 }
 
-// Sweep forgets the addresses of one Runbookfile's commands that nobody is
+// Sweep forgets the addresses of one runbook.yml's commands that nobody is
 // behind any more: what a broadcaster killed outright left in the filesystem,
 // and the folders left empty once those are gone.
 func Sweep(path string) error {

@@ -1,4 +1,4 @@
-// Package runner carries out what a Runbookfile lists: running a command in
+// Package runner carries out what a runbook.yml lists: running a command in
 // this terminal, starting one in the background and stopping it again, saying
 // which are running, and listening to what a started one writes.
 package runner
@@ -18,12 +18,12 @@ import (
 	"runbook/internal/runbookfile"
 )
 
-// shell is what every command in a Runbookfile is handed to, so a command
+// shell is what every command in a runbook.yml is handed to, so a command
 // behaves the same whatever shell the person running it uses.
 const shell = "sh"
 
 // entryDir is the directory a command runs in. base is the directory the
-// Runbookfile lives in, which a relative dir is measured from.
+// runbook.yml lives in, which a relative dir is measured from.
 func entryDir(entry runbookfile.Entry, base string) string {
 	switch {
 	case entry.Dir == "":
@@ -49,7 +49,7 @@ func entryEnv(entry runbookfile.Entry) []string {
 	return env
 }
 
-// Run runs one of a Runbookfile's commands in this terminal, and returns the
+// Run runs one of a runbook.yml's commands in this terminal, and returns the
 // status it exited with, so Runbook can exit with the same one.
 func Run(path string, entries []runbookfile.Entry, name string, stdout, stderr io.Writer) (int, error) {
 	entry, err := runbookfile.Find(entries, name)

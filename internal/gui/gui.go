@@ -1,4 +1,4 @@
-// Package gui is the control panel: the commands of a Runbookfile on the left,
+// Package gui is the control panel: the commands of a runbook.yml on the left,
 // and what one of them is saying on the right.
 package gui
 
@@ -38,7 +38,7 @@ const (
 	running            // running from this window, and ending with it
 )
 
-// command is what the window knows about one of the Runbookfile's commands.
+// command is what the window knows about one of the runbook.yml's commands.
 type command struct {
 	entry runbookfile.Entry
 	out   *tail // the last of what it has said
@@ -66,7 +66,7 @@ func (c *command) mark() string {
 	}
 }
 
-// panel is the window: the commands of one Runbookfile, and what it knows
+// panel is the window: the commands of one runbook.yml, and what it knows
 // about each of them.
 //
 // Everything in here is touched from the goroutine that draws the window and
@@ -97,7 +97,7 @@ type panel struct {
 	busy   bool   // an action is under way, and nothing else can be asked for
 }
 
-// Open shows the panel for a Runbookfile, and returns once it is closed.
+// Open shows the panel for a runbook.yml, and returns once it is closed.
 func Open(path string, entries []runbookfile.Entry) error {
 	p := newPanel(path, entries)
 

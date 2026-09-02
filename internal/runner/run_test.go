@@ -17,7 +17,7 @@ func TestEntryDir(t *testing.T) {
 		dir  string
 		want string
 	}{
-		{"no dir is the Runbookfile's own directory", "", "/project"},
+		{"no dir is the runbook.yml's own directory", "", "/project"},
 		{"a relative dir hangs off it", "services/api", "/project/services/api"},
 		{"an absolute dir is kept", "/srv/api", "/srv/api"},
 	}
@@ -64,7 +64,7 @@ func TestRunEntry(t *testing.T) {
 		{"output", runbookfile.Entry{Name: "hello", Run: "echo hi"}, "hi", 0},
 		{"status", runbookfile.Entry{Name: "fail", Run: "exit 3"}, "", 3},
 		{"the shell reports an unknown command", runbookfile.Entry{Name: "nope", Run: "definitely-not-a-command"}, "", 127},
-		{"runs in the Runbookfile's directory", runbookfile.Entry{Name: "here", Run: "pwd"}, base, 0},
+		{"runs in the runbook.yml's directory", runbookfile.Entry{Name: "here", Run: "pwd"}, base, 0},
 		{"runs in dir", runbookfile.Entry{Name: "there", Run: "pwd", Dir: "nested"}, filepath.Join(base, "nested"), 0},
 		{
 			"passes the variables on",

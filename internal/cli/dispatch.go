@@ -27,7 +27,7 @@ func Main(args []string) int {
 
 	switch in.cmd {
 	// completion runs from wherever a shell starts up, so it never looks at
-	// the Runbookfile.
+	// the runbook.yml.
 	case cmdCompletion:
 		fmt.Print(completionScript(in.rest[0]))
 		return 0

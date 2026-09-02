@@ -21,7 +21,7 @@ type Running struct {
 	Up   time.Duration
 }
 
-// Status gathers the commands of a Runbookfile that are running now, in the
+// Status gathers the commands of a runbook.yml that are running now, in the
 // order the file lists them. A command that was never started, or whose state
 // was left behind by a process that has since gone, is simply not among them.
 func Status(path string, entries []runbookfile.Entry) ([]Running, error) {
