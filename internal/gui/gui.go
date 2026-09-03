@@ -33,6 +33,10 @@ const (
 	check = time.Second
 )
 
+// nearEnd is how close to the bottom of the output counts as being at it, so
+// that a scroll that stops a hair short still follows what comes in.
+const nearEnd = 2
+
 // how a command stands, which is the whole of what says which buttons a person
 // can press on it.
 type how int
@@ -88,8 +92,9 @@ type panel struct {
 	tree   *widget.Tree
 	count  *widget.Label
 	head   *widget.Label
-	output *widget.TextGrid
+	output *widget.Label
 	scroll *container.Scroll
+	end    *widget.Button // the way back to the end of a view held above it
 
 	run, start, stop, logs *widget.Button
 
@@ -102,6 +107,12 @@ type panel struct {
 	picked string // the node selected in the list, which the buttons act on
 	shown  string // the command whose output is on the right
 	busy   bool   // an action is under way, and nothing else can be asked for
+
+	// following is whether the output goes down with what comes in, which it
+	// does until someone scrolls up off the end, and behind whether anything
+	// has come in since they did.
+	following bool
+	behind    bool
 }
 
 // Open shows the panel for a runbook.yml, and returns once it is closed.
@@ -147,6 +158,9 @@ func newPanel(path, store string, entries []runbookfile.Entry) *panel {
 		entries: entries,
 		byName:  make(map[string]*command, len(entries)),
 		folders: newFolders(entries),
+
+		// A view nobody has scrolled is at the end, and stays there.
+		following: true,
 	}
 	for _, entry := range entries {
 		p.byName[entry.Name] = &command{entry: entry, out: &tail{}}
@@ -170,9 +184,21 @@ func (p *panel) content() fyne.CanvasObject {
 
 	p.head = widget.NewLabel("")
 	p.head.TextStyle = fyne.TextStyle{Bold: true}
-	p.output = widget.NewTextGrid()
+	// A label rather than a text grid, because what a command says is worth
+	// being able to take away: a label can be selected with the mouse and
+	// copied out, and a grid cannot. Monospace, so that output lined up in
+	// columns still is.
+	p.output = widget.NewLabel("")
+	p.output.TextStyle = fyne.TextStyle{Monospace: true}
+	p.output.Selectable = true
 	p.scroll = container.NewScroll(p.output)
-	right := container.NewBorder(p.head, nil, nil, nil, p.scroll)
+	p.scroll.OnScrolled = func(fyne.Position) { p.scrolled() }
+
+	// Under the output, and only while the view is held above the end of it.
+	p.end = widget.NewButtonWithIcon("", theme.MoveDownIcon(), p.doEnd)
+	p.end.Hide()
+
+	right := container.NewBorder(p.head, p.end, nil, nil, p.scroll)
 
 	split := container.NewHSplit(left, right)
 	split.Offset = 0.3
@@ -484,6 +510,9 @@ func (p *panel) listen(c *command) {
 // show puts one command's output on the right.
 func (p *panel) show(name string) {
 	p.shown = name
+	// Asking for a command's output is asking for the last of it, whatever was
+	// being read of the command shown before.
+	p.following, p.behind = true, false
 	p.drawOutput()
 }
 
@@ -522,10 +551,102 @@ func (p *panel) drawOutput() {
 	c := p.byName[p.shown]
 	if c == nil {
 		p.output.SetText("")
+		p.drawEnd()
 		return
 	}
 	p.output.SetText(c.out.text())
-	p.scroll.ScrollToBottom()
+
+	// The scroll lays its content out when it is next drawn, which is after
+	// this: the label is sized here so that the end of the output is the end of
+	// what has just been put in it, rather than of what was there before.
+	p.output.Resize(p.output.MinSize().Max(p.scroll.Size()))
+
+	// A view left at the end goes down with what comes in. One that has been
+	// scrolled up stays where it was put — a line someone is reading is worth
+	// more than the newest one — and says that there is more below it.
+	if p.following {
+		p.scroll.ScrollToBottom()
+		p.behind = false
+	} else {
+		p.behind = true
+	}
+	p.drawEnd()
+}
+
+// catchUp is the window taking in what the shown command has said since it was
+// last drawn.
+//
+// Text being selected is left alone: new text in the label would take the
+// selection with it, and someone who is picking a line out to copy has said
+// plainly enough what they want the output to be doing. What has come in waits
+// in the tail until the selection is let go, and the way back down says that
+// there is more of it.
+func (p *panel) catchUp() {
+	c := p.byName[p.shown]
+	if c == nil || !c.out.fresh() {
+		return
+	}
+	if p.output.SelectedText() != "" {
+		p.behind = true
+		p.drawEnd()
+		return
+	}
+	p.drawOutput()
+}
+
+// scrolled is someone moving the output. It follows what comes in again as
+// soon as it is back at the end, and is held where it was put until then.
+func (p *panel) scrolled() {
+	p.following = p.atEnd()
+	if p.following {
+		p.behind = false
+	}
+	p.drawEnd()
+}
+
+// atEnd reports whether the last of the output is in view. Output with room to
+// spare is all of it at once, so it is at the end wherever it stands.
+func (p *panel) atEnd() bool {
+	room := p.output.MinSize().Height - p.scroll.Size().Height
+	if room <= 0 {
+		return true
+	}
+	return p.scroll.Offset.Y >= room-nearEnd
+}
+
+// doEnd takes a held view back down to the end of the output, where it follows
+// what comes in again. Whatever waited on a selection is drawn now, selection
+// and all: going to the end is asking for the newest line rather than the one
+// in hand.
+func (p *panel) doEnd() {
+	p.following, p.behind = true, false
+	p.drawOutput()
+}
+
+// The two things the way back down says: that the output is standing still,
+// and whether anything has come in since it stopped.
+const (
+	frozen = "logs frozen — click to follow them again"
+	newest = "logs frozen — click for the newest lines"
+)
+
+// drawEnd is the way back down, which is there while the view is held above
+// the end of the output, and while something that has come in is waiting on a
+// selection. It says which of the two it is, so that reading an old line does
+// not mean missing a new one.
+func (p *panel) drawEnd() {
+	if p.following && !p.behind {
+		p.end.Hide()
+		return
+	}
+	text := frozen
+	if p.behind {
+		text = newest
+	}
+	if p.end.Text != text {
+		p.end.SetText(text)
+	}
+	p.end.Show()
 }
 
 // follow is the window keeping up on its own: with what the shown command is
@@ -543,11 +664,7 @@ func (p *panel) follow(done <-chan struct{}) {
 			return
 
 		case <-drawing.C:
-			fyne.Do(func() {
-				if c := p.byName[p.shown]; c != nil && c.out.fresh() {
-					p.drawOutput()
-				}
-			})
+			fyne.Do(p.catchUp)
 
 		case <-checking.C:
 			fyne.Do(p.refresh)

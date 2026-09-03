@@ -129,6 +129,15 @@ greyed out: a command that isn't running can't be stopped, and one that is can't
 over. Logs is always there — a command that has said nothing shows nothing, which is itself
 worth being able to see.
 
+What's on the right can be taken away: drag across it to select, double-click for a
+word, triple-click for a line, then Ctrl+C or right-click and Copy.
+
+It follows what the command says as it says it, until you take hold of it — scroll up
+off the end, or select something. Then it stands still: a line you're reading isn't
+pushed away by the next one, and a selection isn't thrown away by it. What comes in
+meanwhile waits, and a button under the output says the logs are frozen and takes you
+back down to the newest lines, where it starts following again.
+
 Nothing starts automatically — you decide what runs and when, whether that's leaving a server up all day or firing off a migration script once.
 
 The window keeps itself up to date. It connects to every command that's broadcasting and
