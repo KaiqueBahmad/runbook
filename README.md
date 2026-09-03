@@ -17,6 +17,60 @@ cd services/api && mvn flyway:migrate
 
 Runbook replaces that ritual with a single file and a single window.
 
+## Install
+
+Runbook is a single Go binary. You build it once and put it on your `PATH`.
+
+You need Go 1.26 or newer (`go version` says which you have).
+
+**1. Clone the repository**
+
+```
+git clone https://github.com/kaiquebahmad/runbook
+cd runbook
+```
+
+**2. Build it**
+
+```
+go build -o bin/runbook ./cmd/runbook
+```
+
+That leaves the binary at `bin/runbook`, and nothing else is created.
+
+**3. Put it on your PATH**
+
+```
+sudo mv bin/runbook /usr/local/bin/runbook
+```
+
+Or, if you'd rather keep it under your own home directory, `mv bin/runbook ~/.local/bin/runbook` — as long as that directory is on your `PATH`.
+
+**4. Check it**
+
+```
+runbook --help
+```
+
+### Autocomplete
+
+Runbook prints its own completion script for bash, zsh or fish. Have your shell run
+it at startup and tab completion knows the commands, the shells, and the names of the
+commands in the runbook.yml you're standing in:
+
+```
+# bash — in ~/.bashrc
+eval "$(runbook completion bash)"
+
+# zsh — in ~/.zshrc
+eval "$(runbook completion zsh)"
+
+# fish — in ~/.config/fish/config.fish
+runbook completion fish | source
+```
+
+Open a new shell afterwards, or source the file you edited, and `runbook <Tab>` starts answering.
+
 ## Usage
 
 ```
