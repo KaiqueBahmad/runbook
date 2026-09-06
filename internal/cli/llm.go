@@ -39,6 +39,7 @@ current directory unless it is given -f.
 
 ## The commands
 
+  runbook gui           open the control panel window
   runbook list          every command in the file, with its description
   runbook run <name>    run one here and wait for it
   runbook start <name>  start one in the background
@@ -76,6 +77,7 @@ Runbook keeps what it knows in a .runbook directory in the home directory of
 whoever is running it, one directory per runbook.yml. It writes nothing into the
 project itself, so a project is left exactly as it was found.
 
-Do not run runbook with no command: that opens a window and blocks until
-someone closes it.
+Do not run runbook gui: that opens a window and blocks until someone closes
+it. Runbook with no command at all opens nothing — it prints its help and
+exits.
 `

@@ -25,6 +25,12 @@ func Main(args []string) int {
 	}
 
 	switch in.cmd {
+	// No command at all is someone asking what Runbook takes, so say it and
+	// stop there. Nothing opens until it is asked for by name.
+	case "":
+		fmt.Println(help)
+		return 0
+
 	// completion runs from wherever a shell starts up, so it never looks at
 	// the runbook.yml.
 	case cmdCompletion:
@@ -92,7 +98,8 @@ func Main(args []string) int {
 		return code
 	}
 
-	// No command at all opens the panel, which looks after itself from there.
+	// gui is what is left: it opens the panel, which looks after itself from
+	// there.
 	return report(gui.Open(in.path, entries))
 }
 

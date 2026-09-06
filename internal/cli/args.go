@@ -15,7 +15,7 @@ import (
 // defaultFile is the file Runbook looks for when no path is given.
 const defaultFile = "runbook.yml"
 
-const usage = "usage: runbook [-f runbook.yml] [command]"
+const usage = "usage: runbook [-f runbook.yml] <command>"
 
 // helpHint points at the help text. It is printed instead of the usage line
 // when the arguments are wrong.
@@ -24,12 +24,14 @@ const helpHint = "run 'runbook --help' for usage"
 // help is the full text printed for --help and -h.
 const help = usage + `
 
-Runbook opens a GUI control panel for the commands listed in a runbook.yml.
+Runbook works with the commands listed in a runbook.yml.
 
-With no arguments it looks for a runbook.yml in the current directory; pass a
-path after -f to open a different file instead.
+It looks for a runbook.yml in the current directory; pass a path after -f to
+work on a different file instead. With no command at all it prints this help
+and exits, so nothing opens until you ask for it.
 
 Commands:
+  gui          open the GUI control panel for the runbook.yml
   list         print the name of every command in the runbook.yml
   run <name>   run one of them in this terminal, and exit with its status
   start <name> run one in the background, where its output is broadcast
@@ -53,8 +55,9 @@ const (
 	fileFlagShort = "-f"
 )
 
-// The commands runbook takes. An empty command opens the panel.
+// The commands runbook takes. An empty command prints the help.
 const (
+	cmdGUI        = "gui"
 	cmdList       = "list"
 	cmdRun        = "run"
 	cmdStart      = "start"
@@ -72,7 +75,7 @@ const (
 const cmdBroadcast = runner.BroadcastCommand
 
 // commands is every command runbook offers.
-var commands = []string{cmdList, cmdRun, cmdStart, cmdStop, cmdStatus, cmdLogs, cmdCompletion, cmdIAmLLM}
+var commands = []string{cmdGUI, cmdList, cmdRun, cmdStart, cmdStop, cmdStatus, cmdLogs, cmdCompletion, cmdIAmLLM}
 
 // named are the commands that take the name of a command in the runbook.yml.
 var named = []string{cmdRun, cmdStart, cmdStop, cmdLogs}
@@ -86,10 +89,11 @@ type invocation struct {
 
 // parseArgs turns the command line arguments (without the program name) into
 // the command to carry out and the full path of the runbook.yml to work on.
-// The command is empty when none was given. The runbook.yml defaults to the
-// one in the current directory, and any other path has to come after -f or
-// --file; relative paths are resolved against the current directory. A --help
-// or -h anywhere in the arguments returns errHelpRequested instead.
+// The command is empty when none was given, which asks for the help. The
+// runbook.yml defaults to the one in the current directory, and any other
+// path has to come after -f or --file; relative paths are resolved against
+// the current directory. A --help or -h anywhere in the arguments returns
+// errHelpRequested instead.
 func parseArgs(args []string) (invocation, error) {
 	var in invocation
 	var path string

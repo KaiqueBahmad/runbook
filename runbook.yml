@@ -1,10 +1,10 @@
 app/start:
   description: Build into bin/ and open the window
-  run: ./run.sh
+  run: ./run.sh gui
 
 app/start-light:
   description: The same build in Fyne's light theme, at double size
-  run: ./run.sh
+  run: ./run.sh gui
   env:
     FYNE_THEME: light
     FYNE_SCALE: 2

@@ -52,7 +52,7 @@ _runbook() {
 
     case "${#seen[@]}" in
         0)
-            COMPREPLY=($(compgen -W 'list run start stop status logs completion iamllm' -- "$cur"))
+            COMPREPLY=($(compgen -W 'gui list run start stop status logs completion iamllm' -- "$cur"))
             ;;
         1)
             case "${seen[0]}" in
@@ -80,6 +80,7 @@ _runbook() {
     local state prog=$words[1]
     local -a commands
     commands=(
+        'gui:open the GUI control panel for the runbook.yml'
         'list:print the name of every command in the runbook.yml'
         'run:run one command in this terminal'
         'start:run one command in the background'
@@ -155,6 +156,8 @@ end
 complete -c runbook -f
 complete -c runbook -s h -l help -d 'print this help and exit'
 complete -c runbook -s f -l file -r -F -d 'runbook.yml to work on'
+complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a gui \
+    -d 'open the GUI control panel for the runbook.yml'
 complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a list \
     -d 'print the name of every command in the runbook.yml'
 complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a run \

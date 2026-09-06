@@ -74,13 +74,16 @@ Open a new shell afterwards, or source the file you edited, and `runbook <Tab>` 
 ## Usage
 
 ```
-runbook
+runbook gui
 ```
 
-With no arguments, Runbook looks for a `runbook.yml` in the current directory. To point it at a different file, pass its path after `-f` (or `--file`):
+`gui` is what opens the control panel, and it is the only thing that does — `runbook`
+on its own prints its usage and exits, so no window turns up unasked.
+
+With no path given, Runbook looks for a `runbook.yml` in the current directory. To point it at a different file, pass its path after `-f` (or `--file`):
 
 ```
-runbook -f path/to/other.yml
+runbook gui -f path/to/other.yml
 ```
 
 The path only counts when it comes after the flag — a bare `runbook path/to/other.yml` exits with a usage error, and so does `-f` with nothing after it.
@@ -88,7 +91,7 @@ The path only counts when it comes after the flag — a bare `runbook path/to/ot
 Relative paths are resolved against the current directory, so Runbook always works
 with the full path to the file.
 
-To print the usage text and exit without opening a window, pass `--help` (or `-h`):
+The same usage text is what `--help` (or `-h`) prints, after any command:
 
 ```
 runbook --help
@@ -113,7 +116,7 @@ is left exactly as it was found: Runbook writes nothing into it.
 The file has to exist before the window opens. If it's missing, or the path points at
 a directory, Runbook says so and exits rather than starting up empty.
 
-Either way, this opens the control panel: the commands on the left, grouped into folders by
+Either way, `runbook gui` opens the control panel: the commands on the left, grouped into folders by
 the slashes in their names, and the output of one of them on the right.
 
 Pick a command and the sidebar offers what can actually be done to it:

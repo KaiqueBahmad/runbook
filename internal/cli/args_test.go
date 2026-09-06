@@ -26,7 +26,9 @@ func TestParseArgs(t *testing.T) {
 		want     string
 		wantErr  bool
 	}{
-		{"no args defaults to runbook.yml", nil, "", nil, abs(t, defaultFile), false},
+		{"no args asks for nothing but the help", nil, "", nil, abs(t, defaultFile), false},
+		{"gui", []string{"gui"}, cmdGUI, nil, abs(t, defaultFile), false},
+		{"gui with the flag", []string{"gui", "-f", "/etc/runbook.yml"}, cmdGUI, nil, "/etc/runbook.yml", false},
 		{"relative path is resolved", []string{"-f", "path/to/other"}, "", nil, abs(t, "path/to/other"), false},
 		{"absolute path is kept", []string{"-f", "/etc/runbook.yml"}, "", nil, "/etc/runbook.yml", false},
 		{"long flag", []string{"--file", "/etc/runbook.yml"}, "", nil, "/etc/runbook.yml", false},
@@ -60,6 +62,7 @@ func TestParseArgs(t *testing.T) {
 		{"logs with two names", []string{"logs", "api", "web"}, "", nil, "", true},
 		{"broadcast without an address", []string{"broadcast"}, "", nil, "", true},
 		{"status with a name", []string{"status", "api"}, "", nil, "", true},
+		{"gui with a name", []string{"gui", "api"}, "", nil, "", true},
 	}
 
 	for _, tt := range tests {
