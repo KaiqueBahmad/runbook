@@ -15,8 +15,12 @@ it started, and stays out of the way.
 
 ## The file
 
-runbook.yml sits wherever the project keeps it, and Runbook looks for it in the
-current directory unless it is given -f.
+runbook.yml sits wherever the project keeps it, usually at the top. Unless it
+is given -f, Runbook looks for it in the current directory, then in the
+directory above, and so on up to the root, and works with the first one it
+finds. So the commands of a project answer from anywhere inside it, and paths
+in the file are still read against the directory the file itself is in, not the
+one you happen to be standing in.
 
     services/api:
       description: The Spring backend

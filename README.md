@@ -80,7 +80,11 @@ runbook gui
 `gui` is what opens the control panel, and it is the only thing that does — `runbook`
 on its own prints its usage and exits, so no window turns up unasked.
 
-With no path given, Runbook looks for a `runbook.yml` in the current directory. To point it at a different file, pass its path after `-f` (or `--file`):
+With no path given, Runbook looks for a `runbook.yml` in the current directory, then
+in the directory above it, and so on up to the root, and works with the first one it
+finds — so the commands of a project answer from anywhere inside it, and not only
+from the directory its `runbook.yml` sits in. A file closer to you wins over one
+further up. To point it at a different file, pass its path after `-f` (or `--file`):
 
 ```
 runbook gui -f path/to/other.yml
@@ -113,8 +117,9 @@ runbook.yml — named after the project, with a fingerprint of the file's full p
 behind it, so that two projects called the same thing never share one. Your project
 is left exactly as it was found: Runbook writes nothing into it.
 
-The file has to exist before the window opens. If it's missing, or the path points at
-a directory, Runbook says so and exits rather than starting up empty.
+The file has to exist before the window opens. If there's none to be found anywhere
+above you, or the path given points at a directory, Runbook says so and exits rather
+than starting up empty.
 
 Either way, `runbook gui` opens the control panel: the commands on the left, grouped into folders by
 the slashes in their names, and the output of one of them on the right.

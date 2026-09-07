@@ -353,6 +353,86 @@ func TestPrintNamesWidth(t *testing.T) {
 	}
 }
 
+// TestLocate is the walk up: a runbook.yml is found from the directory it sits
+// in and from every directory under it, so that a project answers for its
+// commands from anywhere inside it.
+func TestLocate(t *testing.T) {
+	root := t.TempDir()
+
+	project := filepath.Join(root, "project")
+	deep := filepath.Join(project, "services", "api")
+	if err := os.MkdirAll(deep, 0o755); err != nil {
+		t.Fatalf("creating %s: %v", deep, err)
+	}
+
+	file := filepath.Join(project, Name)
+	if err := os.WriteFile(file, []byte("api:\n  run: npm start\n"), 0o644); err != nil {
+		t.Fatalf("writing %s: %v", file, err)
+	}
+
+	t.Run("in the directory it sits in", func(t *testing.T) {
+		got, err := Locate(project)
+		if err != nil {
+			t.Fatalf("Locate(%q): %v", project, err)
+		}
+		if got != file {
+			t.Errorf("Locate(%q) = %q, want %q", project, got, file)
+		}
+	})
+
+	t.Run("from a directory below it", func(t *testing.T) {
+		got, err := Locate(deep)
+		if err != nil {
+			t.Fatalf("Locate(%q): %v", deep, err)
+		}
+		if got != file {
+			t.Errorf("Locate(%q) = %q, want %q", deep, got, file)
+		}
+	})
+
+	t.Run("the closest one wins", func(t *testing.T) {
+		nearer := filepath.Join(project, "services", Name)
+		if err := os.WriteFile(nearer, []byte("web:\n  run: npm run dev\n"), 0o644); err != nil {
+			t.Fatalf("writing %s: %v", nearer, err)
+		}
+		defer os.Remove(nearer)
+
+		got, err := Locate(deep)
+		if err != nil {
+			t.Fatalf("Locate(%q): %v", deep, err)
+		}
+		if got != nearer {
+			t.Errorf("Locate(%q) = %q, want %q", deep, got, nearer)
+		}
+	})
+
+	t.Run("a directory wearing the name is not the file", func(t *testing.T) {
+		masked := filepath.Join(deep, Name)
+		if err := os.Mkdir(masked, 0o755); err != nil {
+			t.Fatalf("creating %s: %v", masked, err)
+		}
+		defer os.Remove(masked)
+
+		got, err := Locate(deep)
+		if err != nil {
+			t.Fatalf("Locate(%q): %v", deep, err)
+		}
+		if got != file {
+			t.Errorf("Locate(%q) = %q, want %q", deep, got, file)
+		}
+	})
+
+	// The walk stops at the root rather than looping there. Nothing above a
+	// fresh temporary directory has a runbook.yml, short of one in the root of
+	// the machine this runs on, which is not a thing that happens.
+	t.Run("nothing anywhere above", func(t *testing.T) {
+		bare := t.TempDir()
+		if _, err := Locate(bare); err == nil {
+			t.Fatalf("Locate(%q) found a %s, want an error", bare, Name)
+		}
+	})
+}
+
 func TestCheck(t *testing.T) {
 	dir := t.TempDir()
 

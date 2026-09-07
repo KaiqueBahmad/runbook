@@ -49,6 +49,21 @@ func Main(args []string) int {
 		return report(ipc.Broadcast(in.rest[0], os.Stdin))
 	}
 
+	// With no path given, the runbook.yml is the project's own: the one here,
+	// or the one in the closest directory above, so that the commands of a
+	// project answer from anywhere inside it.
+	if in.path == "" {
+		dir, err := os.Getwd()
+		if err != nil {
+			return report(fmt.Errorf("finding the current directory to look for a %s in: %w", runbookfile.Name, err))
+		}
+		path, err := runbookfile.Locate(dir)
+		if err != nil {
+			return report(err)
+		}
+		in.path = path
+	}
+
 	if err := runbookfile.Check(in.path); err != nil {
 		return report(err)
 	}

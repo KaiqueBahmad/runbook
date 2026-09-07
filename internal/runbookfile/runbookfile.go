@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
 	"unicode/utf8"
 )
@@ -21,6 +22,10 @@ type Entry struct {
 	Dir         string            // optional working directory, relative to the runbook.yml's directory
 	Env         map[string]string // optional extra environment variables, nil if none
 }
+
+// Name is what the file is called. Runbook looks for it by this name, and
+// nothing else, when it is not given a path of its own.
+const Name = "runbook.yml"
 
 const (
 	fieldRun         = "run"
@@ -251,6 +256,28 @@ func Check(path string) error {
 		return fmt.Errorf("%s is not a regular file", path)
 	}
 	return nil
+}
+
+// Locate finds the runbook.yml a directory belongs to: the one in dir, or
+// failing that the one in the nearest directory above it that has one, up to
+// the root. It is what Runbook looks for when it is given no path, so that a
+// project answers for its commands from anywhere inside it, and not only from
+// the one directory its runbook.yml happens to sit in.
+//
+// A directory or anything else wearing the name is not the file, so the walk
+// steps over it and keeps climbing.
+func Locate(dir string) (string, error) {
+	for up := dir; ; {
+		path := filepath.Join(up, Name)
+		if Check(path) == nil {
+			return path, nil
+		}
+		parent := filepath.Dir(up)
+		if parent == up {
+			return "", fmt.Errorf("no %s in %s or any directory above it", Name, dir)
+		}
+		up = parent
+	}
 }
 
 // Read opens the runbook.yml at path and parses it.

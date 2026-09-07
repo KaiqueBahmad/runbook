@@ -12,9 +12,6 @@ import (
 	"runbook/internal/runner"
 )
 
-// defaultFile is the file Runbook looks for when no path is given.
-const defaultFile = "runbook.yml"
-
 const usage = "usage: runbook [-f runbook.yml] <command>"
 
 // helpHint points at the help text. It is printed instead of the usage line
@@ -26,9 +23,10 @@ const help = usage + `
 
 Runbook works with the commands listed in a runbook.yml.
 
-It looks for a runbook.yml in the current directory; pass a path after -f to
-work on a different file instead. With no command at all it prints this help
-and exits, so nothing opens until you ask for it.
+It looks for a runbook.yml in the current directory, and failing that in the
+directory above it, and so on up to the root; pass a path after -f to work on
+a different file instead. With no command at all it prints this help and
+exits, so nothing opens until you ask for it.
 
 Commands:
   gui          open the GUI control panel for the runbook.yml
@@ -84,16 +82,19 @@ var named = []string{cmdRun, cmdStart, cmdStop, cmdLogs}
 type invocation struct {
 	cmd  string   // the command to carry out, empty when none was given
 	rest []string // the arguments that command was given
-	path string   // full path of the runbook.yml to work on
+
+	// path is the full path of the runbook.yml to work on. It comes back
+	// empty when no path was given, which leaves the file to be looked for.
+	path string
 }
 
 // parseArgs turns the command line arguments (without the program name) into
 // the command to carry out and the full path of the runbook.yml to work on.
-// The command is empty when none was given, which asks for the help. The
-// runbook.yml defaults to the one in the current directory, and any other
-// path has to come after -f or --file; relative paths are resolved against
-// the current directory. A --help or -h anywhere in the arguments returns
-// errHelpRequested instead.
+// The command is empty when none was given, which asks for the help. A path
+// has to come after -f or --file, and relative ones are resolved against the
+// current directory; with no path at all the path comes back empty, for
+// runbookfile.Locate to go looking. A --help or -h anywhere in the arguments
+// returns errHelpRequested instead.
 func parseArgs(args []string) (invocation, error) {
 	var in invocation
 	var path string
@@ -135,14 +136,13 @@ func parseArgs(args []string) (invocation, error) {
 		return invocation{}, err
 	}
 
-	if path == "" {
-		path = defaultFile
+	if path != "" {
+		full, err := filepath.Abs(path)
+		if err != nil {
+			return invocation{}, fmt.Errorf("resolving %q: %w", path, err)
+		}
+		in.path = full
 	}
-	full, err := filepath.Abs(path)
-	if err != nil {
-		return invocation{}, fmt.Errorf("resolving %q: %w", path, err)
-	}
-	in.path = full
 	return in, nil
 }
 
