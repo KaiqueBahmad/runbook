@@ -1,5 +1,3 @@
-//go:build windows
-
 package runner
 
 import (
@@ -30,17 +28,20 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// testAddr is an address to broadcast on. On Windows, we use a TCP port file.
+// testAddr is an address to broadcast on, kept short: a unix socket address is
+// a path, and the kernel takes about a hundred characters of it.
 func testAddr(base string) string {
-	return filepath.Join(base, "api.port")
+	return filepath.Join(base, "api"+testAddrExt)
 }
 
 // testProject writes a runbook.yml in a directory of its own and gives back
-// its path along with the directory Runbook keeps its files in.
+// its path along with the directory Runbook keeps its files in. The home
+// directory is one of the test's own, so that running the tests leaves nothing
+// in the home directory of whoever ran them.
 func testProject(t *testing.T) (string, string) {
 	t.Helper()
 
-	t.Setenv("USERPROFILE", t.TempDir())
+	t.Setenv(envHome, t.TempDir())
 	path := filepath.Join(t.TempDir(), "runbook.yml")
 
 	store, err := workdir.Ensure(path)
@@ -52,7 +53,11 @@ func testProject(t *testing.T) (string, string) {
 
 // startTest starts a command in a temporary directory and gives back that
 // directory and its state file, with the command stopped again when the test
-// ends.
+// ends. A command that has to say when it is ready can touch "ready" in the
+// directory, which waitFor watches.
+//
+// The broadcaster it starts alongside is this very test binary, which TestMain
+// sends to broadcast when it is asked for it.
 func startTest(t *testing.T, run string) (state.State, string, string) {
 	t.Helper()
 
@@ -73,7 +78,7 @@ func startTest(t *testing.T, run string) (state.State, string, string) {
 
 func TestStartEntry(t *testing.T) {
 	t.Run("records a process that is running", func(t *testing.T) {
-		st, _, _ := startTest(t, "timeout /t 30 /nobreak >nul")
+		st, _, _ := startTest(t, cmdSleep)
 
 		if !st.Alive() {
 			t.Error("the command is not running")
@@ -84,10 +89,10 @@ func TestStartEntry(t *testing.T) {
 	})
 
 	t.Run("a command already running is left alone", func(t *testing.T) {
-		st, stateFile, _ := startTest(t, "timeout /t 30 /nobreak >nul")
+		st, stateFile, _ := startTest(t, cmdSleep)
 
 		base := t.TempDir()
-		_, err := startEntry(runbookfile.Entry{Name: "api", Run: "timeout /t 30 /nobreak >nul"}, base, stateFile, testAddr(base))
+		_, err := startEntry(runbookfile.Entry{Name: "api", Run: cmdSleep}, base, stateFile, testAddr(base))
 		if err == nil {
 			t.Fatal("startEntry() error = nil, want an error")
 		}
@@ -103,13 +108,13 @@ func TestStartEntry(t *testing.T) {
 		base := t.TempDir()
 		stateFile := filepath.Join(base, "api.pid")
 
-		if _, err := startEntry(runbookfile.Entry{Name: "api", Run: "exit 0"}, base, stateFile, testAddr(base)); err != nil {
+		if _, err := startEntry(runbookfile.Entry{Name: "api", Run: cmdTrue}, base, stateFile, testAddr(base)); err != nil {
 			t.Fatalf("startEntry(): %v", err)
 		}
 		st, _ := state.Read(stateFile)
 		waitFor(t, func() bool { return !st.Alive() })
 
-		if _, err := startEntry(runbookfile.Entry{Name: "api", Run: "timeout /t 30 /nobreak >nul"}, base, stateFile, testAddr(base)); err != nil {
+		if _, err := startEntry(runbookfile.Entry{Name: "api", Run: cmdSleep}, base, stateFile, testAddr(base)); err != nil {
 			t.Errorf("startEntry() on a finished command: %v", err)
 		}
 		st, _ = state.Read(stateFile)
@@ -118,8 +123,8 @@ func TestStartEntry(t *testing.T) {
 }
 
 func TestStopEntry(t *testing.T) {
-	t.Run("stops a running command", func(t *testing.T) {
-		st, stateFile, _ := startTest(t, "timeout /t 30 /nobreak >nul")
+	t.Run("stops a running command and forgets it", func(t *testing.T) {
+		st, stateFile, _ := startTest(t, cmdSleep)
 
 		killed, err := stopEntry(stateFile, time.Second)
 		if err != nil {
@@ -159,7 +164,8 @@ func TestStopEntry(t *testing.T) {
 	})
 }
 
-// waitFor gives a condition a couple of seconds to come true.
+// waitFor gives a condition a couple of seconds to come true, for the moments
+// where a command Runbook started has to get somewhere first.
 func waitFor(t *testing.T, done func() bool) {
 	t.Helper()
 	for range 100 {
@@ -180,7 +186,7 @@ func exists(file string) bool {
 // broadcaster of its own behind an address, and what the command writes comes
 // back out of it.
 func TestStartEntryBroadcasts(t *testing.T) {
-	_, _, base := startTest(t, "powershell -Command \"while($true){echo tick; Start-Sleep -Milliseconds 50}\"")
+	_, _, base := startTest(t, cmdTick)
 
 	conn, err := ipc.Dial(testAddr(base))
 	if err != nil {

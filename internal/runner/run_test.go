@@ -1,5 +1,3 @@
-//go:build windows
-
 package runner
 
 import (
@@ -19,14 +17,14 @@ func TestEntryDir(t *testing.T) {
 		dir  string
 		want string
 	}{
-		{"no dir is the runbook.yml's own directory", "", "C:\\project"},
-		{"a relative dir hangs off it", "services/api", "C:\\project\\services\\api"},
-		{"an absolute dir is kept", "C:\\srv\\api", "C:\\srv\\api"},
+		{"no dir is the runbook.yml's own directory", "", rootDir},
+		{"a relative dir hangs off it", "services/api", filepath.Join(rootDir, "services", "api")},
+		{"an absolute dir is kept", absDir, absDir},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := entryDir(runbookfile.Entry{Dir: tt.dir}, "C:\\project"); got != tt.want {
+			if got := entryDir(runbookfile.Entry{Dir: tt.dir}, rootDir); got != tt.want {
 				t.Errorf("entryDir(%q) = %q, want %q", tt.dir, got, tt.want)
 			}
 		})
@@ -64,13 +62,13 @@ func TestRunEntry(t *testing.T) {
 		code  int
 	}{
 		{"output", runbookfile.Entry{Name: "hello", Run: "echo hi"}, "hi", 0},
-		{"status", runbookfile.Entry{Name: "fail", Run: "exit /b 3"}, "", 3},
-		{"the shell reports an unknown command", runbookfile.Entry{Name: "nope", Run: "definitely-not-a-command"}, "", 1},
-		{"runs in the runbook.yml's directory", runbookfile.Entry{Name: "here", Run: "cd"}, base, 0},
-		{"runs in dir", runbookfile.Entry{Name: "there", Run: "cd", Dir: "nested"}, filepath.Join(base, "nested"), 0},
+		{"status", runbookfile.Entry{Name: "fail", Run: cmdFail}, "", cmdFailCode},
+		{"the shell reports an unknown command", runbookfile.Entry{Name: "nope", Run: "definitely-not-a-command"}, "", codeNotFound},
+		{"runs in the runbook.yml's directory", runbookfile.Entry{Name: "here", Run: cmdPrintDir}, base, 0},
+		{"runs in dir", runbookfile.Entry{Name: "there", Run: cmdPrintDir, Dir: "nested"}, filepath.Join(base, "nested"), 0},
 		{
 			"passes the variables on",
-			runbookfile.Entry{Name: "env", Run: "echo %PORT%", Env: map[string]string{"PORT": "8080"}},
+			runbookfile.Entry{Name: "env", Run: cmdPrintPort, Env: map[string]string{"PORT": "8080"}},
 			"8080",
 			0,
 		},

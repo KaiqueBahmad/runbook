@@ -1,5 +1,3 @@
-//go:build !windows
-
 package runner
 
 import (
@@ -60,7 +58,7 @@ func broadcastTest(t *testing.T, addr string) *os.File {
 }
 
 func TestLogs(t *testing.T) {
-	entries := []runbookfile.Entry{{Name: "api", Run: "sleep 30"}}
+	entries := []runbookfile.Entry{{Name: "api", Run: cmdSleep}}
 
 	t.Run("what is written", func(t *testing.T) {
 		path, store := testProject(t)
@@ -110,9 +108,9 @@ func TestLogs(t *testing.T) {
 
 func TestLogsAll(t *testing.T) {
 	entries := []runbookfile.Entry{
-		{Name: "api", Run: "sleep 30"},
-		{Name: "web", Run: "sleep 30"},
-		{Name: "idle", Run: "sleep 30"},
+		{Name: "api", Run: cmdSleep},
+		{Name: "web", Run: cmdSleep},
+		{Name: "idle", Run: cmdSleep},
 	}
 
 	t.Run("all of them", func(t *testing.T) {
