@@ -43,26 +43,28 @@ func setProcessGroup(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: newProcessGroup}
 }
 
-// terminateGroup sends a Ctrl+Break event to the process group, which is the
-// closest equivalent to SIGTERM. If the process has no console, it is
-// terminated outright.
+// terminateGroup asks every process in the group to end. taskkill without /F
+// sends the close message a program can act on and take its own time over,
+// which is the grace a stopped command is given before killGroup takes it
+// away. It is what SIGTERM is on the other side.
 func terminateGroup(pid int) error {
 	return taskkill(pid)
 }
 
 // killGroup ends every process in the group outright.
 func killGroup(pid int) error {
-	return taskkill(pid)
+	return taskkill(pid, "/F")
 }
 
 // taskkill takes the group led by pid down, /T reaching what the command
 // spawned in turn. A process that is already gone is not a failure: there is
 // nothing left to take down, which is what the caller wanted.
-func taskkill(pid int) error {
+func taskkill(pid int, extra ...string) error {
 	if !processAlive(pid) {
 		return nil
 	}
-	err := exec.Command("taskkill", "/PID", strconv.Itoa(pid), "/T", "/F").Run()
+	args := append([]string{"/PID", strconv.Itoa(pid), "/T"}, extra...)
+	err := exec.Command("taskkill", args...).Run()
 	if err != nil && !processAlive(pid) {
 		return nil
 	}
