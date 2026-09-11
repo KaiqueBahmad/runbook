@@ -5,7 +5,6 @@ package runner
 import (
 	"bytes"
 	"path/filepath"
-	"syscall"
 	"testing"
 	"time"
 
