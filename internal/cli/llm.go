@@ -33,9 +33,20 @@ one you happen to be standing in.
       description: Report suspicious code
       run: golangci-lint run
 
+    db/reset:
+      description: Drop the database and build it back
+      run: |
+        dropdb app
+        createdb app
+        psql app < schema.sql
+
   <name>       what the command is called. Slashes group commands into folders
                and are part of the name: the first one above is "services/api".
-  run          required. The shell command, handed to sh -c.
+  run          required. The shell command, handed to sh -c. One that does
+               not fit on a line is written as a "|", with the lines of the
+               command indented under it, as db/reset is above. They are run
+               as written, comments and blank lines and all. A "|" anywhere
+               else on the line is the shell's pipe, not a block.
   description  optional. One line, which runbook list shows.
   dir          optional. Where to run it, relative to the directory the
                runbook.yml is in, which is also the default.

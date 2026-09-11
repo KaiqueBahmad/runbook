@@ -53,6 +53,16 @@ const (
 //	  env:
 //	    PORT: 8080
 //	    DATABASE_URL: postgres://user:password@localhost:5432/db
+//
+// A run that does not fit on one line is written as a "|", with the lines of
+// the command indented under it. They are handed to the shell as they are
+// written, comments and blank lines and all:
+//
+//	db/reset:
+//	  run: |
+//	    dropdb app
+//	    createdb app
+//	    psql app < schema.sql
 func Parse(r io.Reader) ([]Entry, error) {
 	var (
 		entries []Entry
@@ -64,7 +74,26 @@ func Parse(r io.Reader) ([]Entry, error) {
 		fieldIndent   = -1
 		envIndent     = -1
 		envPairIndent = -1
+
+		blockAt     = -1 // line the "run: |" was opened on, -1 when not in a block
+		blockIndent = -1 // indent the block's lines are written at, -1 until its first
+		blockLines  []string
 	)
+
+	// closeBlock makes what a "run: |" collected the command. The blank lines
+	// that trail it go: a shell command is the same without them, and an empty
+	// block is then plainly empty.
+	closeBlock := func() error {
+		for len(blockLines) > 0 && blockLines[len(blockLines)-1] == "" {
+			blockLines = blockLines[:len(blockLines)-1]
+		}
+		if len(blockLines) == 0 {
+			return fmt.Errorf("line %d: %s is empty", blockAt, fieldRun)
+		}
+		current.Run = strings.Join(blockLines, "\n")
+		blockAt, blockIndent, blockLines = -1, -1, nil
+		return nil
+	}
 
 	closeCurrent := func() error {
 		if current == nil {
@@ -82,6 +111,32 @@ func Parse(r io.Reader) ([]Entry, error) {
 	scanner := bufio.NewScanner(r)
 	for n := 1; scanner.Scan(); n++ {
 		line := strings.TrimRight(scanner.Text(), " \t\r")
+
+		// Inside a block every line belongs to the command until one comes
+		// back out to the fields, so a "#" here is the shell's comment rather
+		// than the file's, and a blank line is a line of the command.
+		if blockAt >= 0 {
+			spaces := leadingSpaces(line)
+			switch {
+			case line == "":
+				blockLines = append(blockLines, "")
+				continue
+			case line[spaces] == '\t' && (blockIndent < 0 || spaces < blockIndent):
+				return nil, fmt.Errorf("line %d: indent with spaces, not tabs", n)
+			case blockIndent < 0 && spaces > fieldIndent:
+				blockIndent = spaces // the first line sets where the block sits
+				fallthrough
+			case blockIndent >= 0 && spaces >= blockIndent:
+				blockLines = append(blockLines, line[blockIndent:])
+				continue
+			}
+			// The line is back out at the fields: the block ended above it,
+			// and the line itself is read as one of them.
+			if err := closeBlock(); err != nil {
+				return nil, err
+			}
+		}
+
 		body := strings.TrimLeft(line, " \t")
 		if body == "" || strings.HasPrefix(body, "#") {
 			continue
@@ -136,6 +191,9 @@ func Parse(r io.Reader) ([]Entry, error) {
 			if _, dup := current.Env[key]; dup {
 				return nil, fmt.Errorf("line %d: %s %q is set twice", n, fieldEnv, key)
 			}
+			if blockHeader(value) {
+				return nil, blockNotAllowed(n, fmt.Sprintf("%s %q", fieldEnv, key))
+			}
 			current.Env[key] = value
 			continue
 		}
@@ -156,6 +214,13 @@ func Parse(r io.Reader) ([]Entry, error) {
 			if value == "" {
 				return nil, fmt.Errorf("line %d: %s is empty", n, fieldRun)
 			}
+			if blockHeader(value) {
+				blockAt = n // the command is on the lines below, indented under this one
+				continue
+			}
+			if strings.HasPrefix(value, "|") || strings.HasPrefix(value, ">") {
+				return nil, fmt.Errorf("line %d: %q is not a command; write %q on its own to put a multiline one on the lines below it", n, value, "|")
+			}
 			current.Run = value
 		case fieldDescription:
 			if current.Description != "" {
@@ -164,6 +229,9 @@ func Parse(r io.Reader) ([]Entry, error) {
 			if value == "" {
 				return nil, fmt.Errorf("line %d: %s is empty", n, fieldDescription)
 			}
+			if blockHeader(value) {
+				return nil, blockNotAllowed(n, fieldDescription)
+			}
 			current.Description = value
 		case fieldDir:
 			if current.Dir != "" {
@@ -171,6 +239,9 @@ func Parse(r io.Reader) ([]Entry, error) {
 			}
 			if value == "" {
 				return nil, fmt.Errorf("line %d: %s is empty", n, fieldDir)
+			}
+			if blockHeader(value) {
+				return nil, blockNotAllowed(n, fieldDir)
 			}
 			current.Dir = value
 		case fieldEnv:
@@ -189,6 +260,11 @@ func Parse(r io.Reader) ([]Entry, error) {
 	if err := scanner.Err(); err != nil {
 		return nil, err
 	}
+	if blockAt >= 0 {
+		if err := closeBlock(); err != nil {
+			return nil, err
+		}
+	}
 	if err := closeCurrent(); err != nil {
 		return nil, err
 	}
@@ -205,6 +281,38 @@ func Parse(r io.Reader) ([]Entry, error) {
 		}
 	}
 	return entries, nil
+}
+
+// blockHeader reports whether a field's value opens a "|" block: the line
+// holds the indicator alone, and the value is on the lines below it. A shell
+// command never reads this way, since neither "|" nor ">" can open one, so the
+// two never stand for the same thing.
+//
+// YAML also writes the chomping indicators "|-" and "|+" here, which say what
+// to do with the newlines that trail the block. A command runs the same either
+// way, so they are all read as a plain "|".
+func blockHeader(value string) bool {
+	switch value {
+	case "|", "|-", "|+":
+		return true
+	}
+	return false
+}
+
+// blockNotAllowed says that a field other than the run command was given a
+// block, which only the command itself can be.
+func blockNotAllowed(n int, what string) error {
+	return fmt.Errorf("line %d: %s takes a single line, only %s can be a %q block", n, what, fieldRun, "|")
+}
+
+// leadingSpaces is how many spaces a line begins with. It counts spaces alone,
+// where trimming would take the tabs a block's lines are free to start with.
+func leadingSpaces(line string) int {
+	n := 0
+	for n < len(line) && line[n] == ' ' {
+		n++
+	}
+	return n
 }
 
 // checkName reports whether a command name is well formed. Spaces inside a

@@ -151,6 +151,117 @@ web:
 			in:   "api:\n  run: npm start",
 			want: []Entry{{Name: "api", Run: "npm start"}},
 		},
+		{
+			name: "a block run",
+			in: `db/reset:
+  run: |
+    dropdb app
+    createdb app
+`,
+			want: []Entry{{Name: "db/reset", Run: "dropdb app\ncreatedb app"}},
+		},
+		{
+			name: "a block keeps the indentation under its own",
+			in: `deploy:
+  run: |
+    for host in a b; do
+      ssh $host restart
+    done
+`,
+			want: []Entry{{Name: "deploy", Run: "for host in a b; do\n  ssh $host restart\ndone"}},
+		},
+		{
+			name: "a block keeps its comments and its blank lines",
+			in: `build:
+  run: |
+    # build it
+
+    go build ./...
+`,
+			want: []Entry{{Name: "build", Run: "# build it\n\ngo build ./..."}},
+		},
+		{
+			name: "the blank lines trailing a block go",
+			in:   "build:\n  run: |\n    go build ./...\n\n\n",
+			want: []Entry{{Name: "build", Run: "go build ./..."}},
+		},
+		{
+			name: "a block ended by the file",
+			in:   "build:\n  run: |\n    go build ./...",
+			want: []Entry{{Name: "build", Run: "go build ./..."}},
+		},
+		{
+			name: "a block ended by the next command",
+			in: `build:
+  run: |
+    go build ./...
+    go vet ./...
+lint:
+  run: golangci-lint run
+`,
+			want: []Entry{
+				{Name: "build", Run: "go build ./...\ngo vet ./..."},
+				{Name: "lint", Run: "golangci-lint run"},
+			},
+		},
+		{
+			name: "a block ended by another field",
+			in: `api:
+  run: |
+    npm ci
+    npm start
+  dir: services/api
+  env:
+    PORT: 8080
+`,
+			want: []Entry{{
+				Name: "api",
+				Run:  "npm ci\nnpm start",
+				Dir:  "services/api",
+				Env:  map[string]string{"PORT": "8080"},
+			}},
+		},
+		{
+			name: "a block after the env block",
+			in: `api:
+  env:
+    PORT: 8080
+  run: |
+    npm ci
+    npm start
+`,
+			want: []Entry{{
+				Name: "api",
+				Run:  "npm ci\nnpm start",
+				Env:  map[string]string{"PORT": "8080"},
+			}},
+		},
+		{
+			name: "the chomping indicators are read as a plain block",
+			in: `a:
+  run: |-
+    echo one
+b:
+  run: |+
+    echo two
+`,
+			want: []Entry{
+				{Name: "a", Run: "echo one"},
+				{Name: "b", Run: "echo two"},
+			},
+		},
+		{
+			name: "a pipe inside a one line command is not a block",
+			in: `count:
+  run: ls | wc -l
+`,
+			want: []Entry{{Name: "count", Run: "ls | wc -l"}},
+		},
+		{
+			name: "a block line may hold tabs of its own",
+			in:   "heredoc:\n  run: |\n    cat <<-EOF\n    \tindented\n    EOF\n",
+			want: []Entry{{Name: "heredoc", Run: "cat <<-EOF\n\tindented\nEOF"}},
+		},
 	}
 
 	for _, tt := range tests {
@@ -199,6 +310,17 @@ func TestParseErrors(t *testing.T) {
 		{"inconsistent field indent", "api:\n  run: npm start\n    dir: services/api\n", "indented"},
 		{"inconsistent variable indent", "api:\n  run: x\n  env:\n    PORT: 1\n      LOG: 2\n", "indented"},
 		{"tab indent", "api:\n\trun: npm start\n", "tabs"},
+		{"empty block", "api:\n  run: |\n", "run is empty"},
+		{"block with nothing indented under it", "api:\n  run: |\n  dir: services/api\n", "run is empty"},
+		{"block with only blank lines", "api:\n  run: |\n\n\n", "run is empty"},
+		{"tab indented block line", "api:\n  run: |\n\techo one\n", "tabs"},
+		{"block line out at the command names", "api:\n  run: |\n    echo one\n echo two\n", "line 4"},
+		{"run set twice by a block", "api:\n  run: |\n    echo one\n  run: echo two\n", "set twice"},
+		{"a folded block", "api:\n  run: >\n    npm start\n", "not a command"},
+		{"an indentation indicator", "api:\n  run: |2\n    npm start\n", "not a command"},
+		{"a block description", "api:\n  run: npm start\n  description: |\n    The backend\n", "single line"},
+		{"a block dir", "api:\n  run: npm start\n  dir: |\n    services/api\n", "single line"},
+		{"a block variable", "api:\n  run: x\n  env:\n    PORT: |\n      8080\n", "single line"},
 	}
 
 	for _, tt := range tests {
