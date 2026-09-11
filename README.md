@@ -90,6 +90,12 @@ further up. To point it at a different file, pass its path after `-f` (or `--fil
 runbook gui -f path/to/other.yml
 ```
 
+On Windows, use the Windows-specific runbook included in this project:
+
+```
+runbook -f runbook.windows.yml
+```
+
 The path only counts when it comes after the flag — a bare `runbook path/to/other.yml` exits with a usage error, and so does `-f` with nothing after it.
 
 Relative paths are resolved against the current directory, so Runbook always works

@@ -1,3 +1,5 @@
+//go:build !windows
+
 package runner
 
 import (
@@ -29,7 +31,7 @@ func TestStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("state.Read(): %v", err)
 	}
-	t.Cleanup(func() { syscall.Kill(-st.Group(), syscall.SIGKILL) })
+	t.Cleanup(func() { killGroup(st.Group()) })
 
 	if err := state.Write(state.File(store, "gone"), newState(0x7FFFFFFF, "1")); err != nil {
 		t.Fatalf("state.Write(): %v", err)

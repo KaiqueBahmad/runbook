@@ -1,0 +1,49 @@
+app/start:
+  description: Build into bin/ and open the window
+  run: go build -o bin/runbook.exe ./cmd/runbook && bin\runbook.exe gui
+
+app/start-light:
+  description: The same build in Fyne's light theme, at double size
+  run: go build -o bin/runbook.exe ./cmd/runbook && bin\runbook.exe gui
+  env:
+    FYNE_THEME: light
+
+app/help:
+  description: Print the usage text of the last build
+  run: go run ./cmd/runbook --help
+
+app/install-completion:
+  description: Print the Bash completion script
+  run: go run ./cmd/runbook completion bash
+
+go/build:
+  description: Compile the binary into bin/
+  run: go build -o bin/runbook.exe ./cmd/runbook
+
+go/test:
+  description: Run every test
+  run: go test ./...
+
+go/vet:
+  description: Report suspicious code
+  run: go vet ./...
+
+go/fmt:
+  description: List the files that are not gofmt clean
+  run: gofmt -l .
+
+go/tidy:
+  description: Bring go.mod and go.sum back in line with the imports
+  run: go mod tidy
+
+git/log:
+  description: Show the last ten commits, one per line
+  run: git log --oneline -10
+
+demo/sleep:
+  description: Sleep for twenty seconds, to try start and stop against
+  run: ping 127.0.0.1 -n 21 > nul
+
+demo/chatter:
+  description: Count upwards forever, to try logs against
+  run: for /L %i in (1,1,999999) do @echo tick %i & @ping 127.0.0.1 -n 2 > nul

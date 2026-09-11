@@ -11,8 +11,8 @@ import (
 	"time"
 )
 
-// testAddr is an address to broadcast on, kept short: a unix socket address is
-// a path, and the kernel takes about a hundred characters of it.
+// testAddr is an address to broadcast on. On Unix it's a socket path,
+// on Windows it's a port file path.
 func testAddr(base string) string {
 	return filepath.Join(base, "api.sock")
 }

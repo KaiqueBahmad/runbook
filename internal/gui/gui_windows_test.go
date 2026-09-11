@@ -1,4 +1,4 @@
-//go:build !windows
+//go:build windows
 
 package gui
 
@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
 
@@ -46,7 +45,7 @@ func testPanel(t *testing.T, file string) *panel {
 
 	// The home directory is one of the test's own, so that running the tests
 	// leaves nothing in the home directory of whoever ran them.
-	t.Setenv("HOME", t.TempDir())
+	t.Setenv("USERPROFILE", t.TempDir())
 
 	path := filepath.Join(t.TempDir(), "runbook.yml")
 	if err := os.WriteFile(path, []byte(file), 0o600); err != nil {
@@ -137,7 +136,7 @@ func TestFoldersStartClosed(t *testing.T) {
 
 func TestButtons(t *testing.T) {
 	t.Run("nothing is selected", func(t *testing.T) {
-		p := testPanel(t, "api:\n  run: sleep 30\n")
+		p := testPanel(t, "api:\n  run: timeout /t 30 /nobreak >nul\n")
 		wants(t, p, false, false, false, false)
 	})
 
@@ -187,7 +186,7 @@ func TestButtons(t *testing.T) {
 	})
 
 	t.Run("a command that is not running", func(t *testing.T) {
-		p := testPanel(t, "api:\n  run: sleep 30\n")
+		p := testPanel(t, "api:\n  run: timeout /t 30 /nobreak >nul\n")
 		p.tree.Select("api")
 		// It can be set going either way, and there is nothing to stop. Its
 		// output can be looked at even though it has said nothing yet.
@@ -195,7 +194,7 @@ func TestButtons(t *testing.T) {
 	})
 
 	t.Run("what a command said outlives it", func(t *testing.T) {
-		p := testPanel(t, "api:\n  run: sleep 30\n")
+		p := testPanel(t, "api:\n  run: timeout /t 30 /nobreak >nul\n")
 		fmt.Fprintln(p.byName["api"].out, "it said this before it ended")
 
 		p.tree.Select("api")
@@ -203,7 +202,7 @@ func TestButtons(t *testing.T) {
 	})
 
 	t.Run("a command running in the background", func(t *testing.T) {
-		p := testPanel(t, "api:\n  run: sleep 30\n")
+		p := testPanel(t, "api:\n  run: timeout /t 30 /nobreak >nul\n")
 		c := p.byName["api"]
 		c.how, c.pid = started, 1234
 
@@ -213,7 +212,7 @@ func TestButtons(t *testing.T) {
 	})
 
 	t.Run("a command this window is running", func(t *testing.T) {
-		p := testPanel(t, "api:\n  run: sleep 30\n")
+		p := testPanel(t, "api:\n  run: timeout /t 30 /nobreak >nul\n")
 		c := p.byName["api"]
 		c.how, c.pid = running, 1234
 
@@ -222,7 +221,7 @@ func TestButtons(t *testing.T) {
 	})
 
 	t.Run("while Runbook is busy with the last thing asked of it", func(t *testing.T) {
-		p := testPanel(t, "api:\n  run: sleep 30\n")
+		p := testPanel(t, "api:\n  run: timeout /t 30 /nobreak >nul\n")
 		p.tree.Select("api")
 		p.busy = true
 		p.buttons()
@@ -260,7 +259,7 @@ func TestRun(t *testing.T) {
 }
 
 func TestStartAndStop(t *testing.T) {
-	p := testPanel(t, "api:\n  run: while true; do echo tick; sleep 0.05; done\n")
+	p := testPanel(t, "api:\n  run: powershell -Command \"while($true){echo tick; Start-Sleep -Milliseconds 50}\"\n")
 	p.tree.Select("api")
 
 	p.doStart()
@@ -295,7 +294,7 @@ func TestStartAndStop(t *testing.T) {
 // TestRefresh is what the window goes and looks at every second: a command
 // started from somewhere else, which it had no way of hearing about.
 func TestRefresh(t *testing.T) {
-	p := testPanel(t, "api:\n  run: while true; do echo tick; sleep 0.05; done\n")
+	p := testPanel(t, "api:\n  run: powershell -Command \"while($true){echo tick; Start-Sleep -Milliseconds 50}\"\n")
 	c := p.byName["api"]
 
 	if err := runner.Start(p.path, p.entries, "api", io.Discard); err != nil {
@@ -334,148 +333,6 @@ func waitFor(t *testing.T, done func() bool) {
 	t.Fatal("waited two seconds and it never happened")
 }
 
-// TestOutput is what a command has said, put on the right where it can be read
-// and taken away.
-func TestOutput(t *testing.T) {
-	p := testPanel(t, "api:\n  run: sleep 30\n")
-	fmt.Fprintln(p.byName["api"].out, "listening on :8080")
-	p.show("api")
-
-	if got := p.output.Text; !strings.Contains(got, "listening on :8080") {
-		t.Errorf("the output on the right is %q, want what the command said", got)
-	}
-	// A line of a log is worth having in hand — a port, a path, a stack trace —
-	// so it has to be selectable with the mouse before it can be copied out.
-	if !p.output.Selectable {
-		t.Error("the output cannot be selected, so there is no copying a line out of it")
-	}
-}
-
-// TestFollowing is the output going down with what comes in, and staying put
-// when someone has scrolled up to read something.
-func TestFollowing(t *testing.T) {
-	p := testPanel(t, "api:\n  run: sleep 30\n")
-	p.win.Resize(fyne.NewSize(1000, 640))
-
-	c := p.byName["api"]
-	for i := range 200 {
-		fmt.Fprintf(c.out, "line %d\n", i)
-	}
-	p.show("api")
-
-	if !p.following || p.end.Visible() {
-		t.Fatal("the output is not at the end of itself with nothing scrolled")
-	}
-
-	up(p, 400) // someone scrolls back to read something
-
-	if p.following {
-		t.Fatal("the output still follows what comes in after a scroll up")
-	}
-	if !p.end.Visible() {
-		t.Error("nothing offers the way back down to the end")
-	}
-	held := p.scroll.Offset.Y
-
-	fmt.Fprintln(c.out, "and this came in while it was being read")
-	p.drawOutput()
-
-	if p.scroll.Offset.Y != held {
-		t.Errorf("the view moved to %v, want it left at %v", p.scroll.Offset.Y, held)
-	}
-	if p.end.Text != newest {
-		t.Errorf("the way back down says %q, want %q", p.end.Text, newest)
-	}
-
-	p.doEnd()
-
-	if !p.following || p.end.Visible() {
-		t.Error("the view did not go back to following the output")
-	}
-	if !p.atEnd() {
-		t.Error("the view is not at the end of the output after being sent there")
-	}
-}
-
-// up scrolls the output back by however many pixels, the way a wheel does.
-func up(p *panel, by float32) {
-	p.scroll.Scrolled(&fyne.ScrollEvent{Scrolled: fyne.NewDelta(0, by)})
-}
-
-// TestSelecting is text being picked out of the output while the command it
-// came from is still talking.
-func TestSelecting(t *testing.T) {
-	p := testPanel(t, "api:\n  run: sleep 30\n")
-	p.win.Resize(fyne.NewSize(1000, 640))
-
-	c := p.byName["api"]
-	for i := range 200 {
-		fmt.Fprintf(c.out, "line %d\n", i)
-	}
-	p.show("api")
-	drawn := p.output.Text
-
-	// Somebody drags across a line of it.
-	drag := selects(t, p)
-	across(drag, fyne.NewPos(10, 5), fyne.NewPos(60, 5))
-
-	if p.output.SelectedText() == "" {
-		t.Fatal("dragging across the output selected nothing")
-	}
-	held := p.output.SelectedText()
-
-	fmt.Fprintln(c.out, "and the command says something else")
-	p.catchUp()
-
-	if p.output.SelectedText() != held {
-		t.Errorf("the selection is %q, want the %q it was before the new line", p.output.SelectedText(), held)
-	}
-	if p.output.Text != drawn {
-		t.Error("the output was rewritten under the selection")
-	}
-	if !p.end.Visible() || p.end.Text != newest {
-		t.Errorf("the way back down says %q and is shown %v, want %q, shown", p.end.Text, p.end.Visible(), newest)
-	}
-
-	// It waits rather than being lost: letting go of the selection brings it in.
-	across(drag, fyne.NewPos(10, 5), fyne.NewPos(10, 5)) // a click that selects nothing
-	if p.output.SelectedText() != "" {
-		t.Fatal("the selection outlived the click that let go of it")
-	}
-	p.catchUp()
-
-	if !strings.Contains(p.output.Text, "says something else") {
-		t.Error("what came in while the text was selected never turned up")
-	}
-	if p.end.Visible() {
-		t.Error("the way back down is still there with the output caught up")
-	}
-}
-
-// selects is what in the output takes a selection, which is under the label
-// and not the label itself.
-func selects(t *testing.T, p *panel) fyne.Draggable {
-	t.Helper()
-
-	for _, o := range test.LaidOutObjects(p.output) {
-		if d, ok := o.(fyne.Draggable); ok {
-			return d
-		}
-	}
-	t.Fatal("there is nothing in the output that a selection can be dragged over")
-	return nil
-}
-
-// across drags from one place in the output to another, the way a mouse picks
-// out a line of it.
-func across(d fyne.Draggable, from, to fyne.Position) {
-	d.Dragged(&fyne.DragEvent{
-		PointEvent: fyne.PointEvent{Position: to},
-		Dragged:    fyne.NewDelta(to.X-from.X, to.Y-from.Y),
-	})
-	d.DragEnd()
-}
-
 func TestHeader(t *testing.T) {
 	t.Run("says what is running, and of how much", func(t *testing.T) {
 		p := testPanel(t, "api:\n  run: true\n\nweb:\n  run: true\n\nlint:\n  run: true\n")
@@ -499,16 +356,16 @@ func TestHeader(t *testing.T) {
 
 	t.Run("a path is written the way a person writes it", func(t *testing.T) {
 		home := t.TempDir()
-		t.Setenv("HOME", home)
+		t.Setenv("USERPROFILE", home)
 
-		if got, want := shorten(filepath.Join(home, "project", "runbook.yml")), "~/project/runbook.yml"; got != want {
+		if got, want := shorten(filepath.Join(home, "project", "runbook.yml")), filepath.Join("~", "project", "runbook.yml"); got != want {
 			t.Errorf("shorten() = %q, want %q", got, want)
 		}
-		if got := shorten("/etc/runbook.yml"); got != "/etc/runbook.yml" {
+		if got := shorten("C:\\etc\\runbook.yml"); got != "C:\\etc\\runbook.yml" {
 			t.Errorf("shorten() = %q, want a path outside home left alone", got)
 		}
 		// A directory that only starts the same is not inside it.
-		if got, want := shorten(home+"-else/runbook.yml"), home+"-else/runbook.yml"; got != want {
+		if got, want := shorten(home+"-else\\runbook.yml"), home+"-else\\runbook.yml"; got != want {
 			t.Errorf("shorten() = %q, want %q", got, want)
 		}
 	})

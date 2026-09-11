@@ -4,23 +4,16 @@
 package runner
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"maps"
 	"os"
 	"os/exec"
-	"os/signal"
 	"path/filepath"
 	"slices"
-	"syscall"
 
 	"runbook/internal/runbookfile"
 )
-
-// shell is what every command in a runbook.yml is handed to, so a command
-// behaves the same whatever shell the person running it uses.
-const shell = "sh"
 
 // entryDir is the directory a command runs in. base is the directory the
 // runbook.yml lives in, which a relative dir is measured from.
@@ -63,7 +56,7 @@ func Run(path string, entries []runbookfile.Entry, name string, stdout, stderr i
 // with. A command killed by a signal reports 128 plus that signal, the way a
 // shell does.
 func runEntry(entry runbookfile.Entry, base string, stdout, stderr io.Writer) (int, error) {
-	cmd := exec.Command(shell, "-c", entry.Run)
+	cmd := exec.Command(shell, shellFlag, entry.Run)
 	cmd.Dir = entryDir(entry, base)
 	cmd.Env = entryEnv(entry)
 	cmd.Stdin = os.Stdin
@@ -84,40 +77,4 @@ func runEntry(entry runbookfile.Entry, base string, stdout, stderr io.Writer) (i
 		return 0, fmt.Errorf("running %s: %w", entry.Name, err)
 	}
 	return code, nil
-}
-
-// exitStatus is the status a command exited with, the way a shell reports it: a
-// command killed by a signal is 128 plus that signal. The error is only there
-// when the command could not be waited for at all.
-func exitStatus(err error) (int, error) {
-	var exit *exec.ExitError
-	switch {
-	case err == nil:
-		return 0, nil
-	case errors.As(err, &exit):
-		if code := exit.ExitCode(); code >= 0 {
-			return code, nil
-		}
-		if status, ok := exit.Sys().(syscall.WaitStatus); ok && status.Signaled() {
-			return 128 + int(status.Signal()), nil
-		}
-		return 1, nil
-	default:
-		return 0, err
-	}
-}
-
-// ignoreInterrupts stops the interrupt signals from ending Runbook itself, and
-// returns the function that puts them back.
-func ignoreInterrupts() func() {
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		for range signals {
-		}
-	}()
-	return func() {
-		signal.Stop(signals)
-		close(signals)
-	}
 }

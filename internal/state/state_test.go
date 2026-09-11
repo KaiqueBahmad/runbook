@@ -13,17 +13,17 @@ import (
 func TestStatePaths(t *testing.T) {
 	// What Runbook keeps for one project, which is where the state of its
 	// commands goes.
-	work := "/home/someone/.runbook/project-0123456789abcdef"
+	work := filepath.Join("home", "someone", ".runbook", "project-0123456789abcdef")
 
 	t.Run("the state of one project stays together", func(t *testing.T) {
-		want := work + "/state"
+		want := filepath.Join(work, "state")
 		if got := Dir(work); got != want {
 			t.Errorf("Dir() = %q, want %q", got, want)
 		}
 	})
 
 	t.Run("folders in a name become directories", func(t *testing.T) {
-		want := work + "/state/services/api.pid"
+		want := filepath.Join(work, "state", "services", "api.pid")
 		if got := File(work, "services/api"); got != want {
 			t.Errorf("File() = %q, want %q", got, want)
 		}
