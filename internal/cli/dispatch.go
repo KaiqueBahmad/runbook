@@ -88,6 +88,11 @@ func Main(args []string) int {
 		return 0
 
 	case cmdLogs:
+		// With no name it is every command that is running, each line behind
+		// the name of the command that wrote it.
+		if len(in.rest) == 0 {
+			return report(runner.LogsAll(in.path, entries, os.Stdout, isTerminal(os.Stdout)))
+		}
 		return report(runner.Logs(in.path, entries, in.rest[0], os.Stdout))
 
 	case cmdStatus:

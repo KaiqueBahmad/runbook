@@ -154,6 +154,23 @@ once a second it looks again at what is running, so a command someone started in
 terminal, or one that has ended since, turns up on its own. The count at the top says how
 much of the file is going.
 
+The terminal can listen in too. `runbook logs <name>` writes out what one started
+command says from now on, and `runbook logs` on its own does the same for every
+command that is running at once, with the name of the command in front of each
+line:
+
+```
+api  listening on :8080
+web  compiled in 431ms
+api  GET /health 200
+```
+
+It takes the commands that are running the moment you ask, and ends when the last
+of them does. Nothing is written down, so what a command said before you listened
+is gone — `runbook run` is what hands you the whole of a command's output. Piped
+somewhere rather than shown in a terminal, the name and the line are separated by
+a tab, for something other than a person to take apart.
+
 ## What Runbook is not
 
 - Not a container runtime or sandbox — everything runs directly on your machine with your normal environment and permissions.

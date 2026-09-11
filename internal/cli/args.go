@@ -35,7 +35,8 @@ Commands:
   start <name> run one in the background, where its output is broadcast
   stop <name>  end a command that was started
   status       show which commands are running, and at which process id
-  logs <name>  listen to what a started command writes, from now on
+  logs [name]  listen to what a started command writes, from now on; with
+               no name, to every command that is running at once
   completion   print a completion script for bash, zsh or fish
   iamllm       print what a language model needs to know about Runbook
 
@@ -77,6 +78,10 @@ var commands = []string{cmdGUI, cmdList, cmdRun, cmdStart, cmdStop, cmdStatus, c
 
 // named are the commands that take the name of a command in the runbook.yml.
 var named = []string{cmdRun, cmdStart, cmdStop, cmdLogs}
+
+// optionallyNamed are the commands among them that do without a name as well.
+// logs with none is every command that is running at once.
+var optionallyNamed = []string{cmdLogs}
 
 // invocation is what a command line asked for.
 type invocation struct {
@@ -164,10 +169,12 @@ func checkRest(in invocation) error {
 		in.rest = in.rest[1:]
 	default:
 		if slices.Contains(named, in.cmd) {
-			if len(in.rest) == 0 {
+			switch {
+			case len(in.rest) > 0:
+				in.rest = in.rest[1:]
+			case !slices.Contains(optionallyNamed, in.cmd):
 				return fmt.Errorf("%s needs the name of a command", in.cmd)
 			}
-			in.rest = in.rest[1:]
 		}
 	}
 	if len(in.rest) > 0 {

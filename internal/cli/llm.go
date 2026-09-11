@@ -60,7 +60,8 @@ one you happen to be standing in.
   runbook start <name>  start one in the background
   runbook stop <name>   end one that was started
   runbook status        which commands are running, and at which process id
-  runbook logs <name>   listen to what a started command writes
+  runbook logs [name]   listen to what a started command writes, or with no
+                        name to every command that is running at once
   runbook -f <path>     work on a runbook.yml somewhere other than here
 
 ## What to know before using it
@@ -87,6 +88,11 @@ logs hears what a started command says from now on. Nothing is written down, so
 what the command said before you attached is gone for good, and there is no log
 file anywhere to read instead. It ends when the command does. If you need all
 of a command's output, use run.
+
+logs with no name hears every command that is running at that moment, and puts
+the name of the command in front of each line: "name<TAB>line" when it is not
+going to a terminal. It ends when the last of those commands does, and a command
+started after it began is not among them. It fails when nothing is running.
 
 Runbook keeps what it knows in a .runbook directory in the home directory of
 whoever is running it, one directory per runbook.yml. It writes nothing into the

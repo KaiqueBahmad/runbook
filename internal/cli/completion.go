@@ -86,7 +86,7 @@ _runbook() {
         'start:run one command in the background'
         'stop:end a command that was started'
         'status:show which commands are running'
-        'logs:listen to what a started command writes'
+        'logs:listen to what a started command writes, or to all of them'
         'completion:print a completion script for bash, zsh or fish'
         'iamllm:print what a language model needs to know about Runbook'
     )
@@ -169,7 +169,7 @@ complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a stop \
 complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a status \
     -d 'show which commands are running'
 complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a logs \
-    -d 'listen to what a started command writes'
+    -d 'listen to what a started command writes, or to all of them'
 complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a completion \
     -d 'print a completion script for bash, zsh or fish'
 complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a iamllm \
