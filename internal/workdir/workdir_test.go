@@ -10,6 +10,7 @@ import (
 func TestPath(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 
 	t.Run("the files of a project are kept in the home directory", func(t *testing.T) {
 		dir, err := Path("/home/someone/project/runbook.yml")
@@ -76,6 +77,7 @@ func TestPath(t *testing.T) {
 func TestEnsure(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	path := "/home/someone/project/runbook.yml"
 
 	t.Run("creates the directory", func(t *testing.T) {

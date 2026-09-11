@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 
 	"runbook/internal/ipc"
@@ -78,11 +77,11 @@ func startEntry(entry runbookfile.Entry, base, stateFile, addr string) (int, err
 		return 0, fmt.Errorf("%s: %w", entry.Name, err)
 	}
 
-	cmd := exec.Command(shell, "-c", entry.Run)
+	cmd := exec.Command(shell, shellFlag, entry.Run)
 	cmd.Dir = entryDir(entry, base)
 	cmd.Env = entryEnv(entry)
 	cmd.Stdout, cmd.Stderr = w, w
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	setSession(cmd)
 
 	if err := cmd.Start(); err != nil {
 		return 0, fmt.Errorf("starting %s: %w", entry.Name, err)
@@ -94,7 +93,7 @@ func startEntry(entry runbookfile.Entry, base, stateFile, addr string) (int, err
 	boot, _ := state.ProcessBoot(pid)
 	if err := state.Write(stateFile, newState(pid, boot)); err != nil {
 		// Nothing knows about the process now, so do not leave it behind.
-		syscall.Kill(-pid, syscall.SIGKILL)
+		killGroup(pid)
 		return 0, err
 	}
 	return pid, nil
@@ -126,7 +125,7 @@ func startBroadcaster(addr string, in *os.File) (*exec.Cmd, *os.File, error) {
 	cmd := exec.Command(self, BroadcastCommand, addr)
 	cmd.Stdin = in
 	cmd.Stderr = said
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	setSession(cmd)
 
 	if err := cmd.Start(); err != nil {
 		trouble.Close()
@@ -187,12 +186,12 @@ func stopEntry(stateFile string, wait time.Duration) (bool, error) {
 		return false, errors.Join(errors.New("not running"), os.Remove(stateFile))
 	}
 
-	if err := syscall.Kill(-st.Group(), syscall.SIGTERM); err != nil {
+	if err := terminateGroup(st.Group()); err != nil {
 		return false, fmt.Errorf("stopping %d: %w", st.PID, err)
 	}
 	killed := false
 	if !waitGone(st, wait) {
-		if err := syscall.Kill(-st.Group(), syscall.SIGKILL); err != nil {
+		if err := killGroup(st.Group()); err != nil {
 			return false, fmt.Errorf("killing %d: %w", st.PID, err)
 		}
 		killed = true

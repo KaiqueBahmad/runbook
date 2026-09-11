@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -32,6 +33,9 @@ func TestCompletionScript(t *testing.T) {
 // check, so a broken script fails here rather than in somebody's terminal. A
 // shell that is not installed is skipped.
 func TestCompletionScriptParses(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell completion parsing is Unix-specific")
+	}
 	// The flags that make a shell parse a file without running it.
 	checks := map[string][]string{
 		"bash": {"-n"},
@@ -62,6 +66,9 @@ func TestCompletionScriptParses(t *testing.T) {
 // TestBashCompletionSuggests drives the bash function the way bash itself
 // does, so what the script offers at each position is pinned down.
 func TestBashCompletionSuggests(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("bash completion execution is Unix-specific")
+	}
 	bin, err := exec.LookPath("bash")
 	if err != nil {
 		t.Skip("bash is not installed")

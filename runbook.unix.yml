@@ -1,0 +1,51 @@
+app/start:
+  description: Build into bin/ and open the window
+  run: ./run.sh gui
+
+app/start-light:
+  description: The same build in Fyne's light theme, at double size
+  run: ./run.sh gui
+  env:
+    FYNE_THEME: light
+    FYNE_SCALE: 2
+
+app/help:
+  description: Print the usage text of whatever the last build left in bin/
+  dir: bin
+  run: ./runbook --help
+
+app/install-completion:
+  description: Install the bash completion of the last build for this user
+  run: mkdir -p ~/.local/share/bash-completion/completions && ./bin/runbook completion bash > ~/.local/share/bash-completion/completions/runbook
+
+go/build:
+  description: Compile the binary into bin/
+  run: go build -o bin/runbook ./cmd/runbook
+
+go/test:
+  description: Run every test
+  run: go test ./...
+
+go/vet:
+  description: Report suspicious code
+  run: go vet ./...
+
+go/fmt:
+  description: List the files that are not gofmt clean
+  run: gofmt -l .
+
+go/tidy:
+  description: Bring go.mod and go.sum back in line with the imports
+  run: go mod tidy
+
+git/log:
+  description: Show the last ten commits, one per line
+  run: git log --pretty=format:'%h %s' -10
+
+demo/sleep:
+  description: Sleep for twenty seconds, to try start and stop against
+  run: sleep 20
+
+demo/chatter:
+  description: Count upwards forever, to try logs against
+  run: i=0; while true; do i=$((i+1)); echo "tick $i"; [ $((i % 5)) -eq 0 ] && echo "every fifth one goes to stderr" >&2; sleep 0.5; done

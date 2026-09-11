@@ -17,6 +17,7 @@ func TestParseArgs(t *testing.T) {
 		}
 		return full
 	}
+	etc := abs(t, "/etc/runbook.yml")
 
 	tests := []struct {
 		name     string
@@ -28,22 +29,22 @@ func TestParseArgs(t *testing.T) {
 	}{
 		{"no args asks for nothing but the help", nil, "", nil, "", false},
 		{"gui", []string{"gui"}, cmdGUI, nil, "", false},
-		{"gui with the flag", []string{"gui", "-f", "/etc/runbook.yml"}, cmdGUI, nil, "/etc/runbook.yml", false},
+		{"gui with the flag", []string{"gui", "-f", etc}, cmdGUI, nil, etc, false},
 		{"relative path is resolved", []string{"-f", "path/to/other"}, "", nil, abs(t, "path/to/other"), false},
-		{"absolute path is kept", []string{"-f", "/etc/runbook.yml"}, "", nil, "/etc/runbook.yml", false},
-		{"long flag", []string{"--file", "/etc/runbook.yml"}, "", nil, "/etc/runbook.yml", false},
+		{"absolute path is kept", []string{"-f", etc}, "", nil, etc, false},
+		{"long flag", []string{"--file", etc}, "", nil, etc, false},
 		{"list, with no path to look for the file by", []string{"list"}, cmdList, nil, "", false},
-		{"list after the flag", []string{"-f", "/etc/runbook.yml", "list"}, cmdList, nil, "/etc/runbook.yml", false},
-		{"list before the flag", []string{"list", "-f", "/etc/runbook.yml"}, cmdList, nil, "/etc/runbook.yml", false},
+		{"list after the flag", []string{"-f", etc, "list"}, cmdList, nil, etc, false},
+		{"list before the flag", []string{"list", "-f", etc}, cmdList, nil, etc, false},
 		{"completion", []string{"completion", "zsh"}, cmdCompletion, []string{"zsh"}, "", false},
 		{"run", []string{"run", "services/api"}, cmdRun, []string{"services/api"}, "", false},
-		{"run with the flag", []string{"run", "api", "-f", "/etc/runbook.yml"}, cmdRun, []string{"api"}, "/etc/runbook.yml", false},
+		{"run with the flag", []string{"run", "api", "-f", etc}, cmdRun, []string{"api"}, etc, false},
 		{"start", []string{"start", "services/api"}, cmdStart, []string{"services/api"}, "", false},
 		{"stop", []string{"stop", "services/api"}, cmdStop, []string{"services/api"}, "", false},
 		{"status", []string{"status"}, cmdStatus, nil, "", false},
 		{"logs", []string{"logs", "services/api"}, cmdLogs, []string{"services/api"}, "", false},
 		{"logs without a name is every command at once", []string{"logs"}, cmdLogs, nil, "", false},
-		{"logs without a name, after the flag", []string{"-f", "/etc/runbook.yml", "logs"}, cmdLogs, nil, "/etc/runbook.yml", false},
+		{"logs without a name, after the flag", []string{"-f", etc, "logs"}, cmdLogs, nil, etc, false},
 		{"broadcast takes an address", []string{"broadcast", "/tmp/api.sock"}, cmdBroadcast, []string{"/tmp/api.sock"}, "", false},
 		{"empty path", []string{"-f", ""}, "", nil, "", true},
 		{"path without the flag", []string{"path/to/other"}, "", nil, "", true},
