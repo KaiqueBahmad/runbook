@@ -1,0 +1,24 @@
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      # Fyne draws through OpenGL, so the gui package needs these to build.
+      - run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev xorg-dev
+      - run: gofmt -l ./cmd ./internal | tee /dev/stderr | (! read)
+      - run: go vet ./...
+      - name: go vet for Windows
+        run: go vet $(go list ./internal/... | grep -vE '/(gui|cli)$')
+        env:
+          GOOS: windows
+      - run: go test ./...

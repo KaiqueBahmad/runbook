@@ -30,6 +30,22 @@ go/vet:
   description: Report suspicious code
   run: go vet ./...
 
+go/vet-windows:
+  description: Report suspicious code in the Windows build, its tests included
+  run: go vet $(go list ./internal/... | grep -vE '/(gui|cli)$')
+  env:
+    GOOS: windows
+
+go/check:
+  description: Everything the CI runs, in the order it runs it
+  run: |
+    set -e
+    unclean=$(gofmt -l ./cmd ./internal)
+    [ -z "$unclean" ] || { echo "not gofmt clean:"; echo "$unclean"; exit 1; }
+    go vet ./...
+    GOOS=windows go vet $(go list ./internal/... | grep -vE '/(gui|cli)$')
+    go test ./...
+
 go/fmt:
   description: List the files that are not gofmt clean
   run: gofmt -l .
