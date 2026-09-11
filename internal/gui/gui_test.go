@@ -1,5 +1,3 @@
-//go:build !windows
-
 package gui
 
 import (
@@ -46,7 +44,7 @@ func testPanel(t *testing.T, file string) *panel {
 
 	// The home directory is one of the test's own, so that running the tests
 	// leaves nothing in the home directory of whoever ran them.
-	t.Setenv("HOME", t.TempDir())
+	t.Setenv(envHome, t.TempDir())
 
 	path := filepath.Join(t.TempDir(), "runbook.yml")
 	if err := os.WriteFile(path, []byte(file), 0o600); err != nil {
@@ -137,7 +135,7 @@ func TestFoldersStartClosed(t *testing.T) {
 
 func TestButtons(t *testing.T) {
 	t.Run("nothing is selected", func(t *testing.T) {
-		p := testPanel(t, "api:\n  run: sleep 30\n")
+		p := testPanel(t, "api:\n  run: "+cmdSleep+"\n")
 		wants(t, p, false, false, false, false)
 	})
 
@@ -187,7 +185,7 @@ func TestButtons(t *testing.T) {
 	})
 
 	t.Run("a command that is not running", func(t *testing.T) {
-		p := testPanel(t, "api:\n  run: sleep 30\n")
+		p := testPanel(t, "api:\n  run: "+cmdSleep+"\n")
 		p.tree.Select("api")
 		// It can be set going either way, and there is nothing to stop. Its
 		// output can be looked at even though it has said nothing yet.
@@ -195,7 +193,7 @@ func TestButtons(t *testing.T) {
 	})
 
 	t.Run("what a command said outlives it", func(t *testing.T) {
-		p := testPanel(t, "api:\n  run: sleep 30\n")
+		p := testPanel(t, "api:\n  run: "+cmdSleep+"\n")
 		fmt.Fprintln(p.byName["api"].out, "it said this before it ended")
 
 		p.tree.Select("api")
@@ -203,7 +201,7 @@ func TestButtons(t *testing.T) {
 	})
 
 	t.Run("a command running in the background", func(t *testing.T) {
-		p := testPanel(t, "api:\n  run: sleep 30\n")
+		p := testPanel(t, "api:\n  run: "+cmdSleep+"\n")
 		c := p.byName["api"]
 		c.how, c.pid = started, 1234
 
@@ -213,7 +211,7 @@ func TestButtons(t *testing.T) {
 	})
 
 	t.Run("a command this window is running", func(t *testing.T) {
-		p := testPanel(t, "api:\n  run: sleep 30\n")
+		p := testPanel(t, "api:\n  run: "+cmdSleep+"\n")
 		c := p.byName["api"]
 		c.how, c.pid = running, 1234
 
@@ -222,7 +220,7 @@ func TestButtons(t *testing.T) {
 	})
 
 	t.Run("while Runbook is busy with the last thing asked of it", func(t *testing.T) {
-		p := testPanel(t, "api:\n  run: sleep 30\n")
+		p := testPanel(t, "api:\n  run: "+cmdSleep+"\n")
 		p.tree.Select("api")
 		p.busy = true
 		p.buttons()
@@ -260,7 +258,7 @@ func TestRun(t *testing.T) {
 }
 
 func TestStartAndStop(t *testing.T) {
-	p := testPanel(t, "api:\n  run: while true; do echo tick; sleep 0.05; done\n")
+	p := testPanel(t, "api:\n  run: "+cmdTick+"\n")
 	p.tree.Select("api")
 
 	p.doStart()
@@ -295,7 +293,7 @@ func TestStartAndStop(t *testing.T) {
 // TestRefresh is what the window goes and looks at every second: a command
 // started from somewhere else, which it had no way of hearing about.
 func TestRefresh(t *testing.T) {
-	p := testPanel(t, "api:\n  run: while true; do echo tick; sleep 0.05; done\n")
+	p := testPanel(t, "api:\n  run: "+cmdTick+"\n")
 	c := p.byName["api"]
 
 	if err := runner.Start(p.path, p.entries, "api", io.Discard); err != nil {
@@ -337,7 +335,7 @@ func waitFor(t *testing.T, done func() bool) {
 // TestOutput is what a command has said, put on the right where it can be read
 // and taken away.
 func TestOutput(t *testing.T) {
-	p := testPanel(t, "api:\n  run: sleep 30\n")
+	p := testPanel(t, "api:\n  run: "+cmdSleep+"\n")
 	fmt.Fprintln(p.byName["api"].out, "listening on :8080")
 	p.show("api")
 
@@ -354,7 +352,7 @@ func TestOutput(t *testing.T) {
 // TestFollowing is the output going down with what comes in, and staying put
 // when someone has scrolled up to read something.
 func TestFollowing(t *testing.T) {
-	p := testPanel(t, "api:\n  run: sleep 30\n")
+	p := testPanel(t, "api:\n  run: "+cmdSleep+"\n")
 	p.win.Resize(fyne.NewSize(1000, 640))
 
 	c := p.byName["api"]
@@ -405,7 +403,7 @@ func up(p *panel, by float32) {
 // TestSelecting is text being picked out of the output while the command it
 // came from is still talking.
 func TestSelecting(t *testing.T) {
-	p := testPanel(t, "api:\n  run: sleep 30\n")
+	p := testPanel(t, "api:\n  run: "+cmdSleep+"\n")
 	p.win.Resize(fyne.NewSize(1000, 640))
 
 	c := p.byName["api"]
@@ -499,16 +497,16 @@ func TestHeader(t *testing.T) {
 
 	t.Run("a path is written the way a person writes it", func(t *testing.T) {
 		home := t.TempDir()
-		t.Setenv("HOME", home)
+		t.Setenv(envHome, home)
 
-		if got, want := shorten(filepath.Join(home, "project", "runbook.yml")), "~/project/runbook.yml"; got != want {
+		if got, want := shorten(filepath.Join(home, "project", "runbook.yml")), filepath.Join("~", "project", "runbook.yml"); got != want {
 			t.Errorf("shorten() = %q, want %q", got, want)
 		}
-		if got := shorten("/etc/runbook.yml"); got != "/etc/runbook.yml" {
+		if got := shorten(pathOutsideHome); got != pathOutsideHome {
 			t.Errorf("shorten() = %q, want a path outside home left alone", got)
 		}
 		// A directory that only starts the same is not inside it.
-		if got, want := shorten(home+"-else/runbook.yml"), home+"-else/runbook.yml"; got != want {
+		if got, want := shorten(filepath.Join(home+"-else", "runbook.yml")), filepath.Join(home+"-else", "runbook.yml"); got != want {
 			t.Errorf("shorten() = %q, want %q", got, want)
 		}
 	})

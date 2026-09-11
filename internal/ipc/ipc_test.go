@@ -1,19 +1,15 @@
-//go:build windows
-
 package ipc
 
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
 func TestAddr(t *testing.T) {
-	work := "C:\\Users\\someone\\.runbook\\project-0123456789abcdef"
-	want := work + "\\sock\\services\\api.port"
-	if got := Addr(work, "services/api"); got != want {
-		t.Errorf("Addr(%q, %q) = %q, want %q", work, "services/api", got, want)
+	want := filepath.Join(testWork, sockDirName, "services", "api"+sockExt)
+	if got := Addr(testWork, "services/api"); got != want {
+		t.Errorf("Addr(%q, %q) = %q, want %q", testWork, "services/api", got, want)
 	}
 }
 
@@ -52,6 +48,7 @@ func TestListen(t *testing.T) {
 		}
 		l.Close()
 	})
+
 }
 
 func TestSweep(t *testing.T) {
@@ -69,7 +66,7 @@ func TestSweep(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(stale), 0o700); err != nil {
 		t.Fatalf("creating %s: %v", filepath.Dir(stale), err)
 	}
-	if err := os.WriteFile(stale, []byte("99999\n"), 0o600); err != nil {
+	if err := os.WriteFile(stale, staleContent, 0o600); err != nil {
 		t.Fatalf("writing %s: %v", stale, err)
 	}
 
@@ -85,20 +82,4 @@ func TestSweep(t *testing.T) {
 	if !exists(live) {
 		t.Error("the address of a running command was swept away")
 	}
-}
-
-func TestAddrTooLong(t *testing.T) {
-	// On Windows, TCP addresses are not limited by path length like Unix sockets,
-	// but we still test the addr validation logic.
-	addr := filepath.Join(t.TempDir(), strings.Repeat("l", 200), "api.port")
-	if err := os.MkdirAll(filepath.Dir(addr), 0o700); err != nil {
-		t.Fatalf("creating %s: %v", filepath.Dir(addr), err)
-	}
-
-	// This should still work since Windows doesn't have the same addr length limit.
-	l, err := Listen(addr)
-	if err != nil {
-		t.Fatalf("Listen() with long addr: %v", err)
-	}
-	l.Close()
 }

@@ -1,5 +1,3 @@
-//go:build !windows
-
 package runner
 
 import (
@@ -17,9 +15,9 @@ func TestStatus(t *testing.T) {
 	path, store := testProject(t)
 	project := filepath.Dir(path)
 	entries := []runbookfile.Entry{
-		{Name: "web/server", Run: "sleep 30"},
-		{Name: "never-started", Run: "sleep 30"},
-		{Name: "gone", Run: "sleep 30"},
+		{Name: "web/server", Run: cmdSleep},
+		{Name: "never-started", Run: cmdSleep},
+		{Name: "gone", Run: cmdSleep},
 	}
 
 	// One running, one never started, and one whose process is long gone.
