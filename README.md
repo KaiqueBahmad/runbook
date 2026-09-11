@@ -196,6 +196,7 @@ internal/runbookfile/  the file format, read into the entries the rest of the pr
 internal/state/        what Runbook remembers of a started command, so a later stop finds the process
 internal/ipc/          the address a started command's output is broadcast at, and the broadcaster
 internal/workdir/      the .runbook directory beside the runbook.yml, and tidying what is left in it
+internal/winapi/       the little of the Windows API Runbook needs, and empty on every other machine
 ```
 
 Everything but the entry point sits under `internal/`, so none of it can be imported from
