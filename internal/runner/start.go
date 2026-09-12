@@ -23,10 +23,6 @@ import (
 // an address rather than the name of a command.
 const BroadcastCommand = "broadcast"
 
-// grace is how long a stopped command has to end on its own after SIGTERM,
-// before Runbook stops asking and kills it.
-const grace = 5 * time.Second
-
 // bind is how long the broadcaster has to take up its address before start
 // gives up on it.
 const bind = 2 * time.Second
