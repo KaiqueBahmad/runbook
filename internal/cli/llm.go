@@ -16,11 +16,12 @@ it started, and stays out of the way.
 ## The file
 
 runbook.yml sits wherever the project keeps it, usually at the top. Unless it
-is given -f, Runbook looks for it in the current directory, then in the
+is given -f or -u, Runbook looks for it in the current directory, then in the
 directory above, and so on up to the root, and works with the first one it
-finds. So the commands of a project answer from anywhere inside it, and paths
-in the file are still read against the directory the file itself is in, not the
-one you happen to be standing in.
+finds. -f selects the path that follows it; -u selects ~/runbook.yml. So the
+commands of a project answer from anywhere inside it, and paths in the file are
+still read against the directory the file itself is in, not the one you happen
+to be standing in.
 
     services/api:
       description: The Spring backend
@@ -63,6 +64,7 @@ one you happen to be standing in.
   runbook logs [name]   listen to what a started command writes, or with no
                         name to every command that is running at once
   runbook -f <path>     work on a runbook.yml somewhere other than here
+  runbook -u            work on ~/runbook.yml
 
 ## What to know before using it
 

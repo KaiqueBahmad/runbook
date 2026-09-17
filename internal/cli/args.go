@@ -5,6 +5,7 @@ package cli
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -12,7 +13,7 @@ import (
 	"runbook/internal/runner"
 )
 
-const usage = "usage: runbook [-f runbook.yml] <command>"
+const usage = "usage: runbook [-f runbook.yml | -u] <command>"
 
 // helpHint points at the help text. It is printed instead of the usage line
 // when the arguments are wrong.
@@ -25,8 +26,8 @@ Runbook works with the commands listed in a runbook.yml.
 
 It looks for a runbook.yml in the current directory, and failing that in the
 directory above it, and so on up to the root; pass a path after -f to work on
-a different file instead. With no command at all it prints this help and
-exits, so nothing opens until you ask for it.
+a different file instead, or use -u to work on ~/runbook.yml. With no command
+at all it prints this help and exits, so nothing opens until you ask for it.
 
 Commands:
   gui          open the GUI control panel for the runbook.yml
@@ -42,6 +43,7 @@ Commands:
 
 Options:
   -f, --file   path of the runbook.yml to open
+  -u, --user   use ~/runbook.yml
   -h, --help   print this help and exit`
 
 // errHelpRequested is returned by parseArgs when the arguments ask for the
@@ -52,6 +54,8 @@ var errHelpRequested = errors.New("help requested")
 const (
 	fileFlag      = "--file"
 	fileFlagShort = "-f"
+	userFlag      = "--user"
+	userFlagShort = "-u"
 )
 
 // The commands runbook takes. An empty command prints the help.
@@ -97,9 +101,9 @@ type invocation struct {
 // the command to carry out and the full path of the runbook.yml to work on.
 // The command is empty when none was given, which asks for the help. A path
 // has to come after -f or --file, and relative ones are resolved against the
-// current directory; with no path at all the path comes back empty, for
-// runbookfile.Locate to go looking. A --help or -h anywhere in the arguments
-// returns errHelpRequested instead.
+// current directory; -u and --user select ~/runbook.yml. With no path at all
+// the path comes back empty, for runbookfile.Locate to go looking. A --help or
+// -h anywhere in the arguments returns errHelpRequested instead.
 func parseArgs(args []string) (invocation, error) {
 	var in invocation
 	var path string
@@ -122,6 +126,16 @@ func parseArgs(args []string) (invocation, error) {
 				return invocation{}, errors.New("runbook.yml path is empty")
 			}
 			path = args[i]
+
+		case arg == userFlagShort || arg == userFlag:
+			if path != "" {
+				return invocation{}, fmt.Errorf("%s is given twice", arg)
+			}
+			home, err := os.UserHomeDir()
+			if err != nil {
+				return invocation{}, fmt.Errorf("finding the user home directory: %w", err)
+			}
+			path = filepath.Join(home, "runbook.yml")
 
 		case strings.HasPrefix(arg, "-"):
 			return invocation{}, fmt.Errorf("unknown flag %q", arg)

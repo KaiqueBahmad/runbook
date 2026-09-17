@@ -2,6 +2,7 @@ package cli
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -18,6 +19,11 @@ func TestParseArgs(t *testing.T) {
 		return full
 	}
 	etc := abs(t, "/etc/runbook.yml")
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatalf("os.UserHomeDir(): %v", err)
+	}
+	user := filepath.Join(home, "runbook.yml")
 
 	tests := []struct {
 		name     string
@@ -33,6 +39,8 @@ func TestParseArgs(t *testing.T) {
 		{"relative path is resolved", []string{"-f", "path/to/other"}, "", nil, abs(t, "path/to/other"), false},
 		{"absolute path is kept", []string{"-f", etc}, "", nil, etc, false},
 		{"long flag", []string{"--file", etc}, "", nil, etc, false},
+		{"user flag", []string{"-u"}, "", nil, user, false},
+		{"long user flag", []string{"--user"}, "", nil, user, false},
 		{"list, with no path to look for the file by", []string{"list"}, cmdList, nil, "", false},
 		{"list after the flag", []string{"-f", etc, "list"}, cmdList, nil, etc, false},
 		{"list before the flag", []string{"list", "-f", etc}, cmdList, nil, etc, false},
@@ -50,6 +58,8 @@ func TestParseArgs(t *testing.T) {
 		{"path without the flag", []string{"path/to/other"}, "", nil, "", true},
 		{"flag without a path", []string{"-f"}, "", nil, "", true},
 		{"flag given twice", []string{"-f", "a", "-f", "b"}, "", nil, "", true},
+		{"user flag given twice", []string{"-u", "-u"}, "", nil, "", true},
+		{"user and file flags together", []string{"-u", "-f", "a"}, "", nil, "", true},
 		{"unknown flag", []string{"--nope", "list"}, "", nil, "", true},
 		{"unknown command", []string{"run"}, "", nil, "", true},
 		{"command given twice", []string{"list", "list"}, "", nil, "", true},

@@ -90,13 +90,20 @@ further up. To point it at a different file, pass its path after `-f` (or `--fil
 runbook gui -f path/to/other.yml
 ```
 
+To use the runbook in your home directory, use `-u` (or `--user`), which is
+equivalent to `--file ~/runbook.yml`:
+
+```
+runbook gui -u
+```
+
 On Windows, use the Windows-specific runbook included in this project:
 
 ```
 runbook -f runbook.windows.yml
 ```
 
-The path only counts when it comes after the flag — a bare `runbook path/to/other.yml` exits with a usage error, and so does `-f` with nothing after it.
+The path only counts when it comes after the flag — a bare `runbook path/to/other.yml` exits with a usage error, and so does `-f` with nothing after it. `-u` and `--user` do not take a path. The file selected by `-u` must exist, just like one selected with `--file`.
 
 Relative paths are resolved against the current directory, so Runbook always works
 with the full path to the file.
