@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.1.0] - Work In Progress
+## [0.1.0] - 2026-09-21
 
 The first release: everything Runbook does so far.
 
