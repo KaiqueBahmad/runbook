@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.1.1] - Work In Progress
+## [0.1.1] - 2026-09-21
 
 ### Added
 - A .deb package in every release, with the bash and fish completion
