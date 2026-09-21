@@ -13,8 +13,9 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      # Fyne draws through OpenGL, so the gui package needs these to build.
-      - run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev xorg-dev
+      # Fyne draws through OpenGL, and GLFW 3.4 builds for both X11 and Wayland,
+      # so the gui package needs these to build.
+      - run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev xorg-dev libwayland-dev libxkbcommon-dev wayland-protocols
       - run: gofmt -l ./cmd ./internal | tee /dev/stderr | (! read)
       - run: go vet ./...
       - name: go vet for Windows
