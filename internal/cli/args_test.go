@@ -117,3 +117,20 @@ func TestParseArgsHelp(t *testing.T) {
 		})
 	}
 }
+
+func TestParseArgsVersion(t *testing.T) {
+	args := [][]string{
+		{"--version"},
+		{"-v"},
+		{"-f", "path/to/other", "--version"},
+		{"list", "-v"},
+	}
+
+	for _, tt := range args {
+		t.Run(strings.Join(tt, " "), func(t *testing.T) {
+			if _, err := parseArgs(tt); !errors.Is(err, errVersionRequested) {
+				t.Fatalf("parseArgs(%q) error = %v, want errVersionRequested", tt, err)
+			}
+		})
+	}
+}

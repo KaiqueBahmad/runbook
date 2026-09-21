@@ -95,7 +95,7 @@ func TestBashCompletionSuggests(t *testing.T) {
 		{"a half typed shell", []string{"runbook", "completion", "z"}, "zsh"},
 		{"nothing after list", []string{"runbook", "list", ""}, ""},
 		{"nothing after the shell", []string{"runbook", "completion", "bash", ""}, ""},
-		{"the flags", []string{"runbook", "-"}, "-f --file -u --user -h --help"},
+		{"the flags", []string{"runbook", "-"}, "-f --file -u --user -h --help -v --version"},
 		{"the names run takes", []string{"runbook", "run", ""}, "services/api lint"},
 		{"a half typed name", []string{"runbook", "run", "l"}, "lint"},
 		{"nothing after the name", []string{"runbook", "run", "lint", ""}, ""},

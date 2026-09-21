@@ -19,6 +19,10 @@ func Main(args []string) int {
 		fmt.Println(help)
 		return 0
 	}
+	if errors.Is(err, errVersionRequested) {
+		fmt.Println("runbook", currentVersion())
+		return 0
+	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "runbook: %v\n%s\n", err, helpHint)
 		return 2

@@ -36,7 +36,7 @@ _runbook() {
     esac
 
     if [[ "$cur" == -* ]]; then
-        COMPREPLY=($(compgen -W '-f --file -u --user -h --help' -- "$cur"))
+        COMPREPLY=($(compgen -W '-f --file -u --user -h --help -v --version' -- "$cur"))
         return
     fi
 
@@ -93,6 +93,7 @@ _runbook() {
 
     _arguments -C \
         '(-h --help)'{-h,--help}'[print this help and exit]' \
+        '(-v --version)'{-v,--version}'[print the version of runbook and exit]' \
         '(-f --file)'{-f,--file}'[runbook.yml to work on]:file:_files' \
         '(-u --user)'{-u,--user}'[use ~/runbook.yml]' \
         '1: :->command' \
@@ -156,6 +157,7 @@ end
 
 complete -c runbook -f
 complete -c runbook -s h -l help -d 'print this help and exit'
+complete -c runbook -s v -l version -d 'print the version of runbook and exit'
 complete -c runbook -s f -l file -r -F -d 'runbook.yml to work on'
 complete -c runbook -s u -l user -d 'use ~/runbook.yml'
 complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a gui \

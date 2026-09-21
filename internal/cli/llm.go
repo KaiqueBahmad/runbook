@@ -65,6 +65,7 @@ to be standing in.
                         name to every command that is running at once
   runbook -f <path>     work on a runbook.yml somewhere other than here
   runbook -u            work on ~/runbook.yml
+  runbook --version     which Runbook this is, as a semantic version
 
 ## What to know before using it
 

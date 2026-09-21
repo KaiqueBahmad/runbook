@@ -42,13 +42,18 @@ Commands:
   iamllm       print what a language model needs to know about Runbook
 
 Options:
-  -f, --file   path of the runbook.yml to open
-  -u, --user   use ~/runbook.yml
-  -h, --help   print this help and exit`
+  -f, --file     path of the runbook.yml to open
+  -u, --user     use ~/runbook.yml
+  -h, --help     print this help and exit
+  -v, --version  print the version of runbook and exit`
 
 // errHelpRequested is returned by parseArgs when the arguments ask for the
 // help text. It is not a failure: main prints help and exits successfully.
 var errHelpRequested = errors.New("help requested")
+
+// errVersionRequested is returned by parseArgs when the arguments ask for the
+// version. Like the help, it is not a failure.
+var errVersionRequested = errors.New("version requested")
 
 // fileFlag and fileFlagShort introduce the path of the runbook.yml to open.
 const (
@@ -103,7 +108,8 @@ type invocation struct {
 // has to come after -f or --file, and relative ones are resolved against the
 // current directory; -u and --user select ~/runbook.yml. With no path at all
 // the path comes back empty, for runbookfile.Locate to go looking. A --help or
-// -h anywhere in the arguments returns errHelpRequested instead.
+// -h anywhere in the arguments returns errHelpRequested instead, and a
+// --version or -v errVersionRequested.
 func parseArgs(args []string) (invocation, error) {
 	var in invocation
 	var path string
@@ -113,6 +119,9 @@ func parseArgs(args []string) (invocation, error) {
 		switch {
 		case arg == "--help" || arg == "-h":
 			return invocation{}, errHelpRequested
+
+		case arg == "--version" || arg == "-v":
+			return invocation{}, errVersionRequested
 
 		case arg == fileFlagShort || arg == fileFlag:
 			if path != "" {
