@@ -44,9 +44,23 @@ git commit -m "chore(release): 0.2.0"
 # 3. Tag the commit and push the tag
 git tag v0.2.0
 git push origin main v0.2.0
+```
 
-# 4. Check that the build says so
-go build -o bin/runbook ./cmd/runbook && ./bin/runbook --version
+**What happens:**
+- `.github/workflows/release.yml` runs the same checks as CI against the tagged commit
+- It builds Runbook for Linux and Windows (amd64) and checks that each binary's
+  `--version` prints exactly the tag
+- It publishes a GitHub release named after the tag, with the binaries packed as
+  `runbook_v0.2.0_linux_amd64.tar.gz` and `runbook_v0.2.0_windows_amd64.zip`, a
+  `checksums.txt`, and the `[0.2.0]` section of CHANGELOG.md as its notes
+- A tag with a pre-release in it, such as `v1.0.0-rc.1`, is published as a pre-release
+
+The release fails, and nothing is published, if CHANGELOG.md has no section
+for the version or still has it as Work In Progress. To try again, fix it,
+move the tag and push it once more:
+
+```bash
+git tag -f v0.2.0 && git push -f origin v0.2.0
 ```
 
 Once it's out, open a new `## [0.2.1] - Work In Progress` section (or whichever
@@ -60,4 +74,4 @@ version comes next) at the top of CHANGELOG.md for what follows.
 - [ ] `runbook run go/check` passes
 - [ ] The release commit is on main, and the tree is clean
 - [ ] The tag is `vX.Y.Z` and points at that commit
-- [ ] `./bin/runbook --version` prints the tag, with no `+dirty`
+- [ ] The release workflow went green, and the release has both binaries

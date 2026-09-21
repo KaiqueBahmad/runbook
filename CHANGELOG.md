@@ -22,3 +22,4 @@ The first release: everything Runbook does so far.
 - What Runbook remembers kept in `~/.runbook`, one directory per runbook.yml, so a project is left exactly as it was found
 - `runbook --version`/`-v`, the version of the build, read from the git tag it was built from
 - Windows support
+- A GitHub release for every `vX.Y.Z` tag, with binaries for Linux and Windows

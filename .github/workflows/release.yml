@@ -1,0 +1,112 @@
+name: release
+
+# A release is a tag: pushing vX.Y.Z (or a pre-release such as v1.0.0-rc.1)
+# checks the commit, builds Runbook from it, and publishes a GitHub release with
+# the binaries and what CHANGELOG.md says about the version.
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-*'
+
+jobs:
+  check:
+    uses: ./.github/workflows/check.yml
+
+  build:
+    needs: check
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            goos: linux
+            bin: runbook
+          - os: windows-latest
+            goos: windows
+            bin: runbook.exe
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      # The whole history and its tags, so go build finds the tag it stamps
+      # into the binary.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      # Fyne draws through OpenGL, and GLFW 3.4 builds for both X11 and Wayland.
+      # Windows has what it needs already.
+      - if: matrix.goos == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev xorg-dev libwayland-dev libxkbcommon-dev wayland-protocols
+      - run: go build -trimpath -ldflags='-s -w' -o "dist/${{ matrix.bin }}" ./cmd/runbook
+      # The binary has to say the version it is released as: anything else, a
+      # pseudo-version or +dirty, means go build did not see the tag.
+      - name: Check the version
+        run: |
+          got=$("dist/${{ matrix.bin }}" --version)
+          want="runbook $GITHUB_REF_NAME"
+          if [ "$got" != "$want" ]; then
+            echo "the binary says '$got', want '$want'"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: runbook-${{ matrix.goos }}
+          path: dist/${{ matrix.bin }}
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      # The notes are the section of CHANGELOG.md for this version, which has to
+      # be there and dated: a release still marked Work In Progress was tagged
+      # too early.
+      - name: Take the notes from the changelog
+        run: |
+          version=${GITHUB_REF_NAME#v}
+          header=$(grep -m1 -F "## [$version]" CHANGELOG.md || true)
+          if [ -z "$header" ]; then
+            echo "CHANGELOG.md has no section for $version"
+            exit 1
+          fi
+          if echo "$header" | grep -qi 'work in progress'; then
+            echo "CHANGELOG.md still has $version as Work In Progress: $header"
+            exit 1
+          fi
+          awk -v h="$header" '$0 == h { on = 1; next } on && /^## / { exit } on' CHANGELOG.md > notes.md
+          cat notes.md
+
+      - name: Package
+        run: |
+          mkdir dist
+          # Artifacts lose the file mode on the way, so the binary is made
+          # executable again before it is packed.
+          chmod +x artifacts/runbook-linux/runbook
+          name=runbook_${GITHUB_REF_NAME}
+          tar -czf "dist/${name}_linux_amd64.tar.gz" -C artifacts/runbook-linux runbook
+          (cd artifacts/runbook-windows && zip -q "../../dist/${name}_windows_amd64.zip" runbook.exe)
+          (cd dist && sha256sum * > checksums.txt)
+          ls -l dist
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prerelease=()
+          case "$GITHUB_REF_NAME" in *-*) prerelease=(--prerelease) ;; esac
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file notes.md \
+            --verify-tag \
+            "${prerelease[@]}"
