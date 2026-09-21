@@ -1,13 +1,11 @@
 name: release
 
-# A release is a tag: pushing vX.Y.Z (or a pre-release such as v1.0.0-rc.1)
-# checks the commit, builds Runbook from it, and publishes a GitHub release with
+# A release is a tag: pushing vX.Y.Z checks the commit, builds Runbook from it, and publishes a GitHub release with
 # the binaries and what CHANGELOG.md says about the version.
 on:
   push:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
-      - 'v[0-9]+.[0-9]+.[0-9]+-*'
 
 jobs:
   check:
@@ -96,6 +94,36 @@ jobs:
           name=runbook_${GITHUB_REF_NAME}
           tar -czf "dist/${name}_linux_amd64.tar.gz" -C artifacts/runbook-linux runbook
           (cd artifacts/runbook-windows && zip -q "../../dist/${name}_windows_amd64.zip" runbook.exe)
+
+          # The .deb: the binary, and the bash and fish completion where those
+          # shells look for them.
+          version=${GITHUB_REF_NAME#v}
+          root=deb/debian/runbook
+          install -Dm755 artifacts/runbook-linux/runbook "$root/usr/bin/runbook"
+          install -d -m755 "$root/usr/share/bash-completion/completions" "$root/usr/share/fish/vendor_completions.d"
+          "$root/usr/bin/runbook" completion bash > "$root/usr/share/bash-completion/completions/runbook"
+          "$root/usr/bin/runbook" completion fish > "$root/usr/share/fish/vendor_completions.d/runbook.fish"
+          chmod 644 "$root/usr/share/bash-completion/completions/runbook" "$root/usr/share/fish/vendor_completions.d/runbook.fish"
+          # dpkg-shlibdeps names the packages holding the libraries the binary
+          # links against. It wants a debian/control to exist, and nothing more.
+          touch deb/debian/control
+          depends=$(cd deb && dpkg-shlibdeps -O -e debian/runbook/usr/bin/runbook | sed 's/^shlibs:Depends=//')
+          install -d -m755 "$root/DEBIAN"
+          cat > "$root/DEBIAN/control" <<CONTROL
+          Package: runbook
+          Version: $version
+          Architecture: amd64
+          Maintainer: Kaique Bahmad <kaiquebahmadt@gmail.com>
+          Depends: $depends
+          Section: devel
+          Priority: optional
+          Homepage: https://github.com/kaiquebahmad/runbook
+          Description: GUI control panel for the commands a project lists in a runbook.yml
+           Runbook turns a plain text file describing a project's commands into a
+           control panel: run, start, stop and follow the logs of each of them.
+          CONTROL
+          dpkg-deb --build --root-owner-group "$root" "dist/runbook_${version}_amd64.deb"
+
           (cd dist && sha256sum * > checksums.txt)
           ls -l dist
 
@@ -103,10 +131,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          prerelease=()
-          case "$GITHUB_REF_NAME" in *-*) prerelease=(--prerelease) ;; esac
           gh release create "$GITHUB_REF_NAME" dist/* \
             --title "$GITHUB_REF_NAME" \
             --notes-file notes.md \
-            --verify-tag \
-            "${prerelease[@]}"
+            --verify-tag

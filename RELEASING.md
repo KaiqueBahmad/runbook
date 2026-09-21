@@ -52,8 +52,11 @@ git push origin main v0.2.0
   `--version` prints exactly the tag
 - It publishes a GitHub release named after the tag, with the binaries packed as
   `runbook_v0.2.0_linux_amd64.tar.gz` and `runbook_v0.2.0_windows_amd64.zip`, a
-  `checksums.txt`, and the `[0.2.0]` section of CHANGELOG.md as its notes
-- A tag with a pre-release in it, such as `v1.0.0-rc.1`, is published as a pre-release
+  `runbook_0.2.0_amd64.deb`, a `checksums.txt`, and the `[0.2.0]` section of
+  CHANGELOG.md as its notes
+- The .deb installs the binary to `/usr/bin` with the bash and fish completion,
+  and depends on the libraries the binary links against, as `dpkg-shlibdeps`
+  finds them
 
 The release fails, and nothing is published, if CHANGELOG.md has no section
 for the version or still has it as Work In Progress. To try again, fix it,
@@ -74,4 +77,4 @@ version comes next) at the top of CHANGELOG.md for what follows.
 - [ ] `runbook run go/check` passes
 - [ ] The release commit is on main, and the tree is clean
 - [ ] The tag is `vX.Y.Z` and points at that commit
-- [ ] The release workflow went green, and the release has both binaries
+- [ ] The release workflow went green, and the release has both binaries and the .deb

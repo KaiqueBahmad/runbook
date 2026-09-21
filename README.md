@@ -19,7 +19,15 @@ Runbook replaces that ritual with a single file and a single window.
 
 ## Install
 
-Runbook is a single Go binary. You build it once and put it on your `PATH`.
+On Debian or Ubuntu, download the `.deb` from the
+[latest release](https://github.com/kaiquebahmad/runbook/releases/latest) and install it,
+which also sets up the bash and fish completion:
+
+```
+sudo apt install ./runbook_*_amd64.deb
+```
+
+Anywhere else, build it from source. Runbook is a single Go binary. You build it once and put it on your `PATH`.
 
 You need Go 1.26 or newer (`go version` says which you have).
 
