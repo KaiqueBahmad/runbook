@@ -123,8 +123,9 @@ runbook --version
 The version comes from the git tag the binary was built from, so a build of the
 commit tagged `v1.2.0` says `runbook v1.2.0`. A commit after the last tag says a
 pre-release of the next patch, such as `v1.2.1-0.20260921120000-9f1efea1a2b3`,
-with `+dirty` behind it when the tree had uncommitted changes. A release is cut by
-tagging the commit, `git tag v1.2.0`, and building from it.
+with `+dirty` behind it when the tree had uncommitted changes. How a version is
+cut is in [RELEASING.md](RELEASING.md), and what each one changed in
+[CHANGELOG.md](CHANGELOG.md).
 
 If the one reading this is a language model rather than a person, there is a page
 written for it:
