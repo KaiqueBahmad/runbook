@@ -16,7 +16,10 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-latest
+          # The oldest Ubuntu there is a runner for: the binary links against
+          # glibc, which runs what was built against an older one but not a
+          # newer one, so this is what lets it start on 22.04 and on.
+          - os: ubuntu-22.04
             goos: linux
             bin: runbook
           - os: windows-latest
