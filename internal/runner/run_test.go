@@ -17,7 +17,7 @@ func TestEntryDir(t *testing.T) {
 		dir  string
 		want string
 	}{
-		{"no dir is the runbook.yml's own directory", "", rootDir},
+		{"no dir is the current directory", "", ""},
 		{"a relative dir hangs off it", "services/api", filepath.Join(rootDir, "services", "api")},
 		{"an absolute dir is kept", absDir, absDir},
 	}
@@ -54,6 +54,8 @@ func TestRunEntry(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(base, "nested"), 0o755); err != nil {
 		t.Fatalf("creating nested: %v", err)
 	}
+	here := t.TempDir()
+	t.Chdir(here)
 
 	tests := []struct {
 		name  string
@@ -64,7 +66,7 @@ func TestRunEntry(t *testing.T) {
 		{"output", runbookfile.Entry{Name: "hello", Run: "echo hi"}, "hi", 0},
 		{"status", runbookfile.Entry{Name: "fail", Run: cmdFail}, "", cmdFailCode},
 		{"the shell reports an unknown command", runbookfile.Entry{Name: "nope", Run: "definitely-not-a-command"}, "", codeNotFound},
-		{"runs in the runbook.yml's directory", runbookfile.Entry{Name: "here", Run: cmdPrintDir}, base, 0},
+		{"runs in the current directory", runbookfile.Entry{Name: "here", Run: cmdPrintDir}, here, 0},
 		{"runs in dir", runbookfile.Entry{Name: "there", Run: cmdPrintDir, Dir: "nested"}, filepath.Join(base, "nested"), 0},
 		{
 			"passes the variables on",

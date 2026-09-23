@@ -1,39 +1,48 @@
 app/start:
   description: Build into bin/ and open the window
+  dir: .
   run: go build -o bin/runbook.exe ./cmd/runbook && bin\runbook.exe gui
 
 app/start-light:
   description: The same build in Fyne's light theme, at double size
+  dir: .
   run: go build -o bin/runbook.exe ./cmd/runbook && bin\runbook.exe gui
   env:
     FYNE_THEME: light
 
 app/help:
   description: Print the usage text of the last build
+  dir: .
   run: go run ./cmd/runbook --help
 
 app/install-completion:
   description: Print the Bash completion script
+  dir: .
   run: go run ./cmd/runbook completion bash
 
 go/build:
   description: Compile the binary into bin/
+  dir: .
   run: go build -o bin/runbook.exe ./cmd/runbook
 
 go/test:
   description: Run every test
+  dir: .
   run: go test ./...
 
 go/vet:
   description: Report suspicious code
+  dir: .
   run: go vet ./...
 
 go/fmt:
   description: List the files that are not gofmt clean
+  dir: .
   run: gofmt -l .
 
 go/tidy:
   description: Bring go.mod and go.sum back in line with the imports
+  dir: .
   run: go mod tidy
 
 git/log:

@@ -19,7 +19,7 @@ type Entry struct {
 	Name        string            // slashes group entries into folders, e.g. "services/api"
 	Run         string            // shell command
 	Description string            // optional one line summary of what the command does
-	Dir         string            // optional working directory, relative to the runbook.yml's directory
+	Dir         string            // optional working directory, relative to the runbook.yml's directory; the current directory if empty
 	Env         map[string]string // optional extra environment variables, nil if none
 }
 
@@ -41,7 +41,8 @@ const (
 //	  run:               the shell command to run
 //	  description:       optional one line summary of what it does
 //	  dir:               optional working directory, relative to the
-//	                     runbook.yml's own, and defaulting to it
+//	                     runbook.yml's own, and defaulting to the
+//	                     current directory
 //	  env:               optional extra environment variables
 //	    KEY: value
 //

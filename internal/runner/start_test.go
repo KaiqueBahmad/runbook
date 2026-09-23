@@ -31,7 +31,7 @@ func startTest(t *testing.T, run string) (state.State, string, string) {
 	base := t.TempDir()
 	stateFile := filepath.Join(base, ".runbook", "state", "api.pid")
 
-	if _, err := startEntry(runbookfile.Entry{Name: "api", Run: run}, base, stateFile, testAddr(base)); err != nil {
+	if _, err := startEntry(runbookfile.Entry{Name: "api", Run: run, Dir: "."}, base, stateFile, testAddr(base)); err != nil {
 		t.Fatalf("startEntry(): %v", err)
 	}
 	st, err := state.Read(stateFile)

@@ -20,11 +20,13 @@ import (
 const grace = 5 * time.Second
 
 // entryDir is the directory a command runs in. base is the directory the
-// runbook.yml lives in, which a relative dir is measured from.
+// runbook.yml lives in, which a relative dir is measured from. A command with
+// no dir runs wherever Runbook was started, which an empty directory leaves it
+// to.
 func entryDir(entry runbookfile.Entry, base string) string {
 	switch {
 	case entry.Dir == "":
-		return base
+		return ""
 	case filepath.IsAbs(entry.Dir):
 		return entry.Dir
 	default:

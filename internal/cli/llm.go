@@ -50,7 +50,8 @@ to be standing in.
                else on the line is the shell's pipe, not a block.
   description  optional. One line, which runbook list shows.
   dir          optional. Where to run it, relative to the directory the
-               runbook.yml is in, which is also the default.
+               runbook.yml is in. Without it, the command runs in the
+               current directory.
   env          optional. Variables on top of the ones Runbook itself was given.
 
 ## The commands

@@ -1,9 +1,11 @@
 app/start:
   description: Build into bin/ and open the window
+  dir: .
   run: ./run.sh gui
 
 app/start-light:
   description: The same build in Fyne's light theme, at double size
+  dir: .
   run: ./run.sh gui
   env:
     FYNE_THEME: light
@@ -16,28 +18,40 @@ app/help:
 
 app/install-completion:
   description: Install the bash completion of the last build for this user
+  dir: .
   run: mkdir -p ~/.local/share/bash-completion/completions && ./bin/runbook completion bash > ~/.local/share/bash-completion/completions/runbook
+
+go/build-dev:
+  description: Compile the binary into bin/ with -dev sufixe
+  dir: .
+  run: go build -o bin/runbook-dev ./cmd/runbook
+
 
 go/build:
   description: Compile the binary into bin/
+  dir: .
   run: go build -o bin/runbook ./cmd/runbook
 
 go/test:
   description: Run every test
+  dir: .
   run: go test ./...
 
 go/vet:
   description: Report suspicious code
+  dir: .
   run: go vet ./...
 
 go/vet-windows:
   description: Report suspicious code in the Windows build, its tests included
+  dir: .
   run: go vet $(go list ./internal/... | grep -vE '/(gui|cli)$')
   env:
     GOOS: windows
 
 go/check:
   description: Everything the CI runs, in the order it runs it
+  dir: .
   run: |
     set -e
     unclean=$(gofmt -l ./cmd ./internal)
@@ -48,10 +62,12 @@ go/check:
 
 go/fmt:
   description: List the files that are not gofmt clean
+  dir: .
   run: gofmt -l .
 
 go/tidy:
   description: Bring go.mod and go.sum back in line with the imports
+  dir: .
   run: go mod tidy
 
 git/log:
