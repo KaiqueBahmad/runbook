@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [0.3.0] - 2026-09-26
 
 ### Added
 - `runbook inspect <name>` prints what a command runs, behind a `cd` into its `dir` when it has one: `cd '/path/to/api' && go run main.go`
