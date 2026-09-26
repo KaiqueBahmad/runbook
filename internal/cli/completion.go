@@ -60,14 +60,14 @@ _runbook() {
 
     case "${#seen[@]}" in
         0)
-            COMPREPLY=($(compgen -W 'gui list run start stop status logs completion iamllm' -- "$cur"))
+            COMPREPLY=($(compgen -W 'gui list inspect run start stop status logs completion iamllm' -- "$cur"))
             ;;
         1)
             case "${seen[0]}" in
                 completion)
                     COMPREPLY=($(compgen -W 'bash zsh fish' -- "$cur"))
                     ;;
-                run|start|stop|logs)
+                inspect|run|start|stop|logs)
                     # The names come from the runbook.yml being completed for,
                     # asked of the very runbook being typed. bash has nowhere to
                     # show the description behind the tab, so it is cut off. A
@@ -95,6 +95,7 @@ _runbook() {
     commands=(
         'gui:open the GUI control panel for the runbook.yml'
         'list:print the name of every command in the runbook.yml'
+        'inspect:print what one command runs'
         'run:run one command in this terminal'
         'start:run commands in the background'
         'stop:end commands that were started'
@@ -130,7 +131,7 @@ _runbook() {
                     names=(${names:#(${(j:|:)~${(b)words[2,CURRENT-1]}}):*})
                     _describe 'command' names
                     ;;
-                run|logs)
+                inspect|run|logs)
                     # _describe wants name:description, list gives name<tab>
                     # description, so the first tab of each line becomes a colon.
                     local -a names
@@ -192,6 +193,8 @@ complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a gui \
     -d 'open the GUI control panel for the runbook.yml'
 complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a list \
     -d 'print the name of every command in the runbook.yml'
+complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a inspect \
+    -d 'print what one command runs'
 complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a run \
     -d 'run one command in this terminal'
 complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a start \
@@ -208,7 +211,7 @@ complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a iamllm \
     -d 'print what a language model needs to know about Runbook'
 complete -c runbook -n '__runbook_argument_of completion' \
     -a 'bash zsh fish' -d shell
-complete -c runbook -n '__runbook_argument_of run logs' \
+complete -c runbook -n '__runbook_argument_of inspect run logs' \
     -a '(__runbook_names)' -d command
 complete -c runbook -n '__runbook_names_of_several' \
     -a '(__runbook_names)' -d command

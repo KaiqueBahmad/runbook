@@ -32,6 +32,8 @@ at all it prints this help and exits, so nothing opens until you ask for it.
 Commands:
   gui          open the GUI control panel for the runbook.yml
   list         print the name of every command in the runbook.yml
+  inspect <name>
+               print what one of them runs, behind a cd into its dir
   run <name>   run one of them in this terminal, and exit with its status
   start <name>...
                run them in the background, where their output is broadcast
@@ -69,6 +71,7 @@ const (
 const (
 	cmdGUI        = "gui"
 	cmdList       = "list"
+	cmdInspect    = "inspect"
 	cmdRun        = "run"
 	cmdStart      = "start"
 	cmdStop       = "stop"
@@ -85,10 +88,10 @@ const (
 const cmdBroadcast = runner.BroadcastCommand
 
 // commands is every command runbook offers.
-var commands = []string{cmdGUI, cmdList, cmdRun, cmdStart, cmdStop, cmdStatus, cmdLogs, cmdCompletion, cmdIAmLLM}
+var commands = []string{cmdGUI, cmdList, cmdInspect, cmdRun, cmdStart, cmdStop, cmdStatus, cmdLogs, cmdCompletion, cmdIAmLLM}
 
 // named are the commands that take the name of a command in the runbook.yml.
-var named = []string{cmdRun, cmdStart, cmdStop, cmdLogs}
+var named = []string{cmdInspect, cmdRun, cmdStart, cmdStop, cmdLogs}
 
 // several are the commands among them that take any number of names, one or
 // more, and carry out the same for each.

@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `runbook inspect <name>` prints what a command runs, behind a `cd` into its `dir` when it has one: `cd '/path/to/api' && go run main.go`
 - `runbook start` and `runbook stop` take several names, `runbook start api web db`, and see to each in turn. A name the file does not have stops it before anything starts; a command that fails is reported and the rest still go ahead, with exit status 1 at the end
 
 ### Changed

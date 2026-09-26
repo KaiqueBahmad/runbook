@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"strings"
 	"syscall"
 )
 
@@ -22,6 +23,12 @@ const (
 	shell     = "sh"
 	shellFlag = "-c"
 )
+
+// cdTo is the shell line that moves into dir, quoted so that a path with a
+// space or a quote in it is still the one path.
+func cdTo(dir string) string {
+	return "cd '" + strings.ReplaceAll(dir, "'", `'\''`) + "'"
+}
 
 // setSession puts the command in a session of its own, so it leads a process
 // group of its own and taking the command down takes the whole tree with it.

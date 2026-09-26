@@ -87,16 +87,18 @@ func TestBashCompletionSuggests(t *testing.T) {
 		words []string // the command line, ending with the word being completed
 		want  string
 	}{
-		{"a command", []string{"runbook", ""}, "gui list run start stop status logs completion iamllm"},
+		{"a command", []string{"runbook", ""}, "gui list inspect run start stop status logs completion iamllm"},
 		{"a half typed command", []string{"runbook", "l"}, "list logs"},
 		{"nothing after gui", []string{"runbook", "gui", ""}, ""},
-		{"a command after the flag", []string{"runbook", "-f", "runbook.yml", ""}, "gui list run start stop status logs completion iamllm"},
+		{"a command after the flag", []string{"runbook", "-f", "runbook.yml", ""}, "gui list inspect run start stop status logs completion iamllm"},
 		{"the shell completion takes", []string{"runbook", "completion", ""}, "bash zsh fish"},
 		{"a half typed shell", []string{"runbook", "completion", "z"}, "zsh"},
 		{"nothing after list", []string{"runbook", "list", ""}, ""},
 		{"nothing after the shell", []string{"runbook", "completion", "bash", ""}, ""},
 		{"the flags", []string{"runbook", "-"}, "-f --file -u --user -h --help -v --version"},
 		{"the names run takes", []string{"runbook", "run", ""}, "services/api lint"},
+		{"the names inspect takes", []string{"runbook", "inspect", ""}, "services/api lint"},
+		{"nothing after the name inspect takes", []string{"runbook", "inspect", "lint", ""}, ""},
 		{"a half typed name", []string{"runbook", "run", "l"}, "lint"},
 		{"nothing after the name", []string{"runbook", "run", "lint", ""}, ""},
 		{"the names start takes", []string{"runbook", "start", ""}, "services/api lint"},

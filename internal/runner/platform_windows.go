@@ -26,6 +26,12 @@ const (
 	shellFlag = "/c"
 )
 
+// cdTo is the cmd.exe line that moves into dir, drive and all, quoted so that a
+// path with a space in it is still the one path.
+func cdTo(dir string) string {
+	return `cd /d "` + dir + `"`
+}
+
 // newProcessGroup is CREATE_NEW_PROCESS_GROUP, which is as close as Windows
 // comes to a process group of one command's own: what the command spawns is
 // in the group with it, and taskkill /T reaches the lot.

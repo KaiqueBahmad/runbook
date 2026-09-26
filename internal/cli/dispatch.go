@@ -91,6 +91,9 @@ func Main(args []string) int {
 		runbookfile.PrintNames(os.Stdout, entries, isTerminal(os.Stdout))
 		return 0
 
+	case cmdInspect:
+		return report(runner.Inspect(in.path, entries, in.rest[0], os.Stdout))
+
 	case cmdLogs:
 		// With no name it is every command that is running, each line behind
 		// the name of the command that wrote it.

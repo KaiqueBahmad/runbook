@@ -58,6 +58,7 @@ to be standing in.
 
   runbook gui           open the control panel window
   runbook list          every command in the file, with its description
+  runbook inspect <name>   print what one runs, as "cd <dir> && <run>"
   runbook run <name>    run one here and wait for it
   runbook start <name>...  start them in the background
   runbook stop <name>...   end ones that were started
