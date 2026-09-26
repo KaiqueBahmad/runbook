@@ -82,8 +82,9 @@ a signal reports 128 plus that signal, the way a shell does.
 
 start puts the command in a session of its own, so it outlives the terminal it
 was started from and a stop from anywhere still finds it. It answers with the
-process id and returns. Starting a command that is already running fails rather
-than starting a second one.
+process id and returns. Starting a command that is already running leaves it as
+it is and says so, rather than starting a second one; that is not a failure, so
+start exits 0 and a script can start what it needs without checking first.
 
 stop asks the command's whole process group to end, so a shell command takes
 what it spawned with it, and kills it if it has not gone within five seconds.

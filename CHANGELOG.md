@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Changed
+- `runbook start` on a command that is already running says so and exits 0 instead of failing, so `runbook start one && runbook start two` goes on to `two` whatever the state of `one`
+
 ## [0.2.0] - 2026-09-23
 
 ### Changed

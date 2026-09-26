@@ -40,9 +40,12 @@ const bind = 2 * time.Second
 // The two are joined by a pipe. Runbook holds the write end until the command
 // has it too, and then lets go, so that the broadcaster sees the output end
 // exactly when the command does and not before.
+//
+// A command that is running already is left as it is, and the error says so
+// with a runningError, which Start does not count as a failure.
 func startEntry(entry runbookfile.Entry, base, stateFile, addr string) (int, error) {
 	if st, err := state.Read(stateFile); err == nil && st.Alive() {
-		return 0, fmt.Errorf("%s is already running (pid %d)", entry.Name, st.PID)
+		return 0, runningError{name: entry.Name, pid: st.PID}
 	} else if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return 0, err
 	}
@@ -93,6 +96,17 @@ func startEntry(entry runbookfile.Entry, base, stateFile, addr string) (int, err
 		return 0, err
 	}
 	return pid, nil
+}
+
+// runningError is what startEntry says of a command that was running before it
+// was asked to start.
+type runningError struct {
+	name string
+	pid  int
+}
+
+func (e runningError) Error() string {
+	return fmt.Sprintf("%s is already running (pid %d)", e.name, e.pid)
 }
 
 // startBroadcaster starts the broadcaster of one command: another copy of
@@ -224,6 +238,13 @@ func Start(path string, entries []runbookfile.Entry, name string, w io.Writer) e
 	}
 
 	pid, err := startEntry(entry, filepath.Dir(path), state.File(work, entry.Name), ipc.Addr(work, entry.Name))
+	// Asking for a command that is running already to be running is asking for
+	// what is there, so a script can start what it needs without looking first.
+	var running runningError
+	if errors.As(err, &running) {
+		fmt.Fprintln(w, running)
+		return nil
+	}
 	if err != nil {
 		return err
 	}

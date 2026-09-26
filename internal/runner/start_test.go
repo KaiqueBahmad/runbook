@@ -63,8 +63,8 @@ func TestStartEntry(t *testing.T) {
 		if err == nil {
 			t.Fatal("startEntry() error = nil, want an error")
 		}
-		if !strings.Contains(err.Error(), "already running") {
-			t.Errorf("startEntry() error = %v, want it to say the command is running", err)
+		if running, ok := err.(runningError); !ok || running.pid != st.PID {
+			t.Errorf("startEntry() error = %v, want a runningError for pid %d", err, st.PID)
 		}
 		if !st.Alive() {
 			t.Error("the first command was stopped")
