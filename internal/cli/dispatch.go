@@ -108,10 +108,14 @@ func Main(args []string) int {
 		return 0
 
 	case cmdStart:
-		return report(runner.Start(in.path, entries, in.rest[0], os.Stdout))
+		return each(entries, in.rest, func(name string) error {
+			return runner.Start(in.path, entries, name, os.Stdout)
+		})
 
 	case cmdStop:
-		return report(runner.Stop(in.path, entries, in.rest[0], os.Stdout))
+		return each(entries, in.rest, func(name string) error {
+			return runner.Stop(in.path, entries, name, os.Stdout)
+		})
 
 	case cmdRun:
 		code, err := runner.Run(in.path, entries, in.rest[0], os.Stdout, os.Stderr)
@@ -125,6 +129,26 @@ func Main(args []string) int {
 	// gui is what is left: it opens the panel, which looks after itself from
 	// there.
 	return report(gui.Open(in.path, entries))
+}
+
+// each does the same to every named command, in the order they were named. A
+// name the runbook.yml does not have stops it before anything is done, so a
+// typo does not leave half of what was asked for going. One that fails is
+// reported and the rest are still seen to; the status is a failure if any of
+// them was.
+func each(entries []runbookfile.Entry, names []string, do func(name string) error) int {
+	for _, name := range names {
+		if _, err := runbookfile.Find(entries, name); err != nil {
+			return report(err)
+		}
+	}
+	code := 0
+	for _, name := range names {
+		if c := report(do(name)); c != 0 {
+			code = c
+		}
+	}
+	return code
 }
 
 // report says what went wrong, if anything did, and gives back the status to

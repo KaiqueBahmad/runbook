@@ -59,8 +59,8 @@ to be standing in.
   runbook gui           open the control panel window
   runbook list          every command in the file, with its description
   runbook run <name>    run one here and wait for it
-  runbook start <name>  start one in the background
-  runbook stop <name>   end one that was started
+  runbook start <name>...  start them in the background
+  runbook stop <name>...   end ones that were started
   runbook status        which commands are running, and at which process id
   runbook logs [name]   listen to what a started command writes, or with no
                         name to every command that is running at once
@@ -85,6 +85,10 @@ was started from and a stop from anywhere still finds it. It answers with the
 process id and returns. Starting a command that is already running leaves it as
 it is and says so, rather than starting a second one; that is not a failure, so
 start exits 0 and a script can start what it needs without checking first.
+
+start and stop take any number of names and see to each in the order given. A
+name the runbook.yml does not have fails before anything is done; otherwise one
+that fails is reported, the rest are still seen to, and it exits 1 at the end.
 
 stop asks the command's whole process group to end, so a shell command takes
 what it spawned with it, and kills it if it has not gone within five seconds.

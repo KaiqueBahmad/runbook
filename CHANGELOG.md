@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `runbook start` and `runbook stop` take several names, `runbook start api web db`, and see to each in turn. A name the file does not have stops it before anything starts; a command that fails is reported and the rest still go ahead, with exit status 1 at the end
+
 ### Changed
 - `runbook start` on a command that is already running says so and exits 0 instead of failing, so `runbook start one && runbook start two` goes on to `two` whatever the state of `one`
 

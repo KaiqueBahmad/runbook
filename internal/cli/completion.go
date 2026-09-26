@@ -50,6 +50,14 @@ _runbook() {
         esac
     done
 
+    # start and stop take any number of names, so they are offered again
+    # after the first, less the ones typed already.
+    local -a typed
+    if [[ "${seen[0]}" == start || "${seen[0]}" == stop ]]; then
+        typed=("${seen[@]:1}")
+        seen=("${seen[0]}")
+    fi
+
     case "${#seen[@]}" in
         0)
             COMPREPLY=($(compgen -W 'gui list run start stop status logs completion iamllm' -- "$cur"))
@@ -65,8 +73,13 @@ _runbook() {
                     # show the description behind the tab, so it is cut off. A
                     # newline IFS keeps names with spaces in one piece.
                     [[ -n "$file" ]] && opt=(-f "$file")
-                    local IFS=$'\n'
-                    COMPREPLY=($(compgen -W "$("${COMP_WORDS[0]}" list "${opt[@]}" 2>/dev/null | cut -f1)" -- "$cur"))
+                    local IFS=$'\n' name t
+                    for name in $(compgen -W "$("${COMP_WORDS[0]}" list "${opt[@]}" 2>/dev/null | cut -f1)" -- "$cur"); do
+                        for t in "${typed[@]}"; do
+                            [[ "$t" == "$name" ]] && continue 2
+                        done
+                        COMPREPLY+=("$name")
+                    done
                     ;;
             esac
             ;;
@@ -83,8 +96,8 @@ _runbook() {
         'gui:open the GUI control panel for the runbook.yml'
         'list:print the name of every command in the runbook.yml'
         'run:run one command in this terminal'
-        'start:run one command in the background'
-        'stop:end a command that was started'
+        'start:run commands in the background'
+        'stop:end commands that were started'
         'status:show which commands are running'
         'logs:listen to what a started command writes, or to all of them'
         'completion:print a completion script for bash, zsh or fish'
@@ -110,7 +123,14 @@ _runbook() {
                 completion)
                     (( CURRENT == 2 )) && _values 'shell' bash zsh fish
                     ;;
-                run|start|stop|logs)
+                start|stop)
+                    # Any number of names, each offered once.
+                    local -a names
+                    names=(${${(f)"$($prog list 2>/dev/null)"}/$'\t'/:})
+                    names=(${names:#(${(j:|:)~${(b)words[2,CURRENT-1]}}):*})
+                    _describe 'command' names
+                    ;;
+                run|logs)
                     # _describe wants name:description, list gives name<tab>
                     # description, so the first tab of each line becomes a colon.
                     local -a names
@@ -148,6 +168,14 @@ function __runbook_argument_of
     and contains -- "$seen[1]" $argv
 end
 
+# True while any of the names start or stop take is being typed, which is every
+# word after the command.
+function __runbook_names_of_several
+    set -l seen (__runbook_seen)
+    test (count $seen) -ge 1
+    and contains -- "$seen[1]" start stop
+end
+
 # The command names, asked of the very runbook being typed. Each line is a name
 # and, behind a tab, the description fish shows beside it.
 function __runbook_names
@@ -167,9 +195,9 @@ complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a list \
 complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a run \
     -d 'run one command in this terminal'
 complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a start \
-    -d 'run one command in the background'
+    -d 'run commands in the background'
 complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a stop \
-    -d 'end a command that was started'
+    -d 'end commands that were started'
 complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a status \
     -d 'show which commands are running'
 complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a logs \
@@ -180,6 +208,8 @@ complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a iamllm \
     -d 'print what a language model needs to know about Runbook'
 complete -c runbook -n '__runbook_argument_of completion' \
     -a 'bash zsh fish' -d shell
-complete -c runbook -n '__runbook_argument_of run start stop logs' \
+complete -c runbook -n '__runbook_argument_of run logs' \
+    -a '(__runbook_names)' -d command
+complete -c runbook -n '__runbook_names_of_several' \
     -a '(__runbook_names)' -d command
 `

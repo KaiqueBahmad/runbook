@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -59,4 +60,56 @@ func TestListWithNoRunbookAnywhere(t *testing.T) {
 	if _, code := says(t, "list"); code != 1 {
 		t.Errorf("runbook list exited with %d, want 1", code)
 	}
+}
+
+// TestEach is start and stop given several names: a name that is not in the
+// file stops everything before it starts, and one that fails does not keep the
+// rest from being seen to.
+func TestEach(t *testing.T) {
+	entries := []runbookfile.Entry{{Name: "api"}, {Name: "web"}, {Name: "db"}}
+
+	t.Run("every name, in order", func(t *testing.T) {
+		var did []string
+		code := each(entries, []string{"web", "api"}, func(name string) error {
+			did = append(did, name)
+			return nil
+		})
+		if code != 0 {
+			t.Errorf("each() = %d, want 0", code)
+		}
+		if strings.Join(did, " ") != "web api" {
+			t.Errorf("each() did %q, want web then api", did)
+		}
+	})
+
+	t.Run("an unknown name does nothing at all", func(t *testing.T) {
+		var did []string
+		code := each(entries, []string{"api", "nope"}, func(name string) error {
+			did = append(did, name)
+			return nil
+		})
+		if code != 1 {
+			t.Errorf("each() = %d, want 1", code)
+		}
+		if len(did) != 0 {
+			t.Errorf("each() did %q, want nothing", did)
+		}
+	})
+
+	t.Run("a failure leaves the rest to be done", func(t *testing.T) {
+		var did []string
+		code := each(entries, []string{"api", "web", "db"}, func(name string) error {
+			did = append(did, name)
+			if name == "web" {
+				return errors.New("web would not start")
+			}
+			return nil
+		})
+		if code != 1 {
+			t.Errorf("each() = %d, want 1", code)
+		}
+		if strings.Join(did, " ") != "api web db" {
+			t.Errorf("each() did %q, want all three", did)
+		}
+	})
 }

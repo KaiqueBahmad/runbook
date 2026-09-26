@@ -33,8 +33,10 @@ Commands:
   gui          open the GUI control panel for the runbook.yml
   list         print the name of every command in the runbook.yml
   run <name>   run one of them in this terminal, and exit with its status
-  start <name> run one in the background, where its output is broadcast
-  stop <name>  end a command that was started
+  start <name>...
+               run them in the background, where their output is broadcast
+  stop <name>...
+               end commands that were started
   status       show which commands are running, and at which process id
   logs [name]  listen to what a started command writes, from now on; with
                no name, to every command that is running at once
@@ -87,6 +89,10 @@ var commands = []string{cmdGUI, cmdList, cmdRun, cmdStart, cmdStop, cmdStatus, c
 
 // named are the commands that take the name of a command in the runbook.yml.
 var named = []string{cmdRun, cmdStart, cmdStop, cmdLogs}
+
+// several are the commands among them that take any number of names, one or
+// more, and carry out the same for each.
+var several = []string{cmdStart, cmdStop}
 
 // optionallyNamed are the commands among them that do without a name as well.
 // logs with none is every command that is running at once.
@@ -193,6 +199,8 @@ func checkRest(in invocation) error {
 	default:
 		if slices.Contains(named, in.cmd) {
 			switch {
+			case len(in.rest) > 0 && slices.Contains(several, in.cmd):
+				in.rest = nil
 			case len(in.rest) > 0:
 				in.rest = in.rest[1:]
 			case !slices.Contains(optionallyNamed, in.cmd):

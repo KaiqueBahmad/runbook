@@ -101,6 +101,9 @@ func TestBashCompletionSuggests(t *testing.T) {
 		{"nothing after the name", []string{"runbook", "run", "lint", ""}, ""},
 		{"the names start takes", []string{"runbook", "start", ""}, "services/api lint"},
 		{"the names stop takes", []string{"runbook", "stop", ""}, "services/api lint"},
+		{"more names after the first start takes", []string{"runbook", "start", "lint", ""}, "services/api"},
+		{"more names after the first stop takes", []string{"runbook", "stop", "services/api", ""}, "lint"},
+		{"no names left to start", []string{"runbook", "start", "lint", "services/api", ""}, ""},
 		{"the names logs takes", []string{"runbook", "logs", ""}, "services/api lint"},
 	}
 
