@@ -158,3 +158,40 @@ func TestStartEntryBroadcasts(t *testing.T) {
 		t.Errorf("the command was heard saying %q, want it to hold %q", got, "tick")
 	}
 }
+
+// TestRestart is a command that is not running being started, and one that is
+// being replaced by a process of its own.
+func TestRestart(t *testing.T) {
+	path, store := testProject(t)
+	entries := []runbookfile.Entry{{Name: "api", Run: cmdSleep}}
+	stateFile := state.File(store, "api")
+
+	var out strings.Builder
+	if err := Restart(path, entries, "api", &out); err != nil {
+		t.Fatalf("Restart() of a command that is not running: %v", err)
+	}
+	first, err := state.Read(stateFile)
+	if err != nil {
+		t.Fatalf("state.Read(): %v", err)
+	}
+	t.Cleanup(func() { killGroup(first.Group()) })
+
+	if err := Restart(path, entries, "api", &out); err != nil {
+		t.Fatalf("Restart() of a running command: %v", err)
+	}
+	second, err := state.Read(stateFile)
+	if err != nil {
+		t.Fatalf("state.Read(): %v", err)
+	}
+	t.Cleanup(func() { killGroup(second.Group()) })
+
+	if first.Alive() {
+		t.Error("the first process is still running")
+	}
+	if !second.Alive() || second.PID == first.PID {
+		t.Errorf("the command was not started again: pid %d, before %d", second.PID, first.PID)
+	}
+	if !strings.Contains(out.String(), "stopped api") {
+		t.Errorf("Restart() said %q, want it to say it stopped api", out.String())
+	}
+}

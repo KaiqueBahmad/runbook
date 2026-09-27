@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Added
+- `runbook restart <name>...` stops each command if it is running and starts it again. A command that is not running is simply started, and it exits 0
+
 ## [0.3.0] - 2026-09-26
 
 ### Added

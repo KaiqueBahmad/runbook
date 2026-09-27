@@ -39,6 +39,8 @@ Commands:
                run them in the background, where their output is broadcast
   stop <name>...
                end commands that were started
+  restart <name>...
+               stop them if they are running, and start them again
   status       show which commands are running, and at which process id
   logs [name]  listen to what a started command writes, from now on; with
                no name, to every command that is running at once
@@ -75,6 +77,7 @@ const (
 	cmdRun        = "run"
 	cmdStart      = "start"
 	cmdStop       = "stop"
+	cmdRestart    = "restart"
 	cmdStatus     = "status"
 	cmdLogs       = "logs"
 	cmdCompletion = "completion"
@@ -88,14 +91,14 @@ const (
 const cmdBroadcast = runner.BroadcastCommand
 
 // commands is every command runbook offers.
-var commands = []string{cmdGUI, cmdList, cmdInspect, cmdRun, cmdStart, cmdStop, cmdStatus, cmdLogs, cmdCompletion, cmdIAmLLM}
+var commands = []string{cmdGUI, cmdList, cmdInspect, cmdRun, cmdStart, cmdStop, cmdRestart, cmdStatus, cmdLogs, cmdCompletion, cmdIAmLLM}
 
 // named are the commands that take the name of a command in the runbook.yml.
-var named = []string{cmdInspect, cmdRun, cmdStart, cmdStop, cmdLogs}
+var named = []string{cmdInspect, cmdRun, cmdStart, cmdStop, cmdRestart, cmdLogs}
 
 // several are the commands among them that take any number of names, one or
 // more, and carry out the same for each.
-var several = []string{cmdStart, cmdStop}
+var several = []string{cmdStart, cmdStop, cmdRestart}
 
 // optionallyNamed are the commands among them that do without a name as well.
 // logs with none is every command that is running at once.

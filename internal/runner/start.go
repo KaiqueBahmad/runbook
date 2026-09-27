@@ -180,20 +180,24 @@ func newState(pid int, boot string) state.State {
 	return state.State{PID: pid, Boot: boot, Since: time.Now().Unix()}
 }
 
+// errNotRunning is what stopEntry says of a command there is nothing running
+// of, which restart does not count as a failure.
+var errNotRunning = errors.New("not running")
+
 // stopEntry ends a started command and forgets it, and reports whether it had
 // to be killed outright. The signals go to the whole process group, so a
 // command that is a shell script takes what it spawned down with it.
 func stopEntry(stateFile string, wait time.Duration) (bool, error) {
 	st, err := state.Read(stateFile)
 	if errors.Is(err, fs.ErrNotExist) {
-		return false, errors.New("not running")
+		return false, errNotRunning
 	}
 	if err != nil {
 		return false, err
 	}
 	if !st.Alive() {
 		// The process is long gone; only the file was left behind.
-		return false, errors.Join(errors.New("not running"), os.Remove(stateFile))
+		return false, errors.Join(errNotRunning, os.Remove(stateFile))
 	}
 
 	if err := terminateGroup(st.Group()); err != nil {
@@ -225,7 +229,7 @@ func waitGone(st state.State, wait time.Duration) bool {
 	return !st.Alive()
 }
 
-// Start and Stop are what the commands of the same name do: find the entry,
+// Start, Stop and Restart are what the commands of the same name do: find the entry,
 // make sure Runbook has somewhere to keep its files, and report what happened.
 func Start(path string, entries []runbookfile.Entry, name string, w io.Writer) error {
 	entry, err := runbookfile.Find(entries, name)
@@ -273,4 +277,14 @@ func Stop(path string, entries []runbookfile.Entry, name string, w io.Writer) er
 	}
 	fmt.Fprintf(w, "stopped %s\n", entry.Name)
 	return nil
+}
+
+// Restart stops a command and starts it again. One that is not running is
+// simply started, so a script can restart what it needs without looking first.
+func Restart(path string, entries []runbookfile.Entry, name string, w io.Writer) error {
+	err := Stop(path, entries, name, w)
+	if err != nil && !errors.Is(err, errNotRunning) {
+		return err
+	}
+	return Start(path, entries, name, w)
 }

@@ -79,7 +79,7 @@ func Main(args []string) int {
 	// The commands that work with what is running forget what has ended since.
 	// list is left out: shell completion calls it on every tab, and it is the
 	// one command that writes nothing.
-	if in.cmd == cmdStatus || in.cmd == cmdStart || in.cmd == cmdStop {
+	if in.cmd == cmdStatus || in.cmd == cmdStart || in.cmd == cmdStop || in.cmd == cmdRestart {
 		if err := runner.Sweep(in.path); err != nil {
 			// Housekeeping must not stand between someone and their process.
 			fmt.Fprintf(os.Stderr, "runbook: could not tidy up: %v\n", err)
@@ -118,6 +118,11 @@ func Main(args []string) int {
 	case cmdStop:
 		return each(entries, in.rest, func(name string) error {
 			return runner.Stop(in.path, entries, name, os.Stdout)
+		})
+
+	case cmdRestart:
+		return each(entries, in.rest, func(name string) error {
+			return runner.Restart(in.path, entries, name, os.Stdout)
 		})
 
 	case cmdRun:

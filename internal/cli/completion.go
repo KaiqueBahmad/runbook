@@ -50,24 +50,24 @@ _runbook() {
         esac
     done
 
-    # start and stop take any number of names, so they are offered again
-    # after the first, less the ones typed already.
+    # start, stop and restart take any number of names, so they are offered
+    # again after the first, less the ones typed already.
     local -a typed
-    if [[ "${seen[0]}" == start || "${seen[0]}" == stop ]]; then
+    if [[ "${seen[0]}" == start || "${seen[0]}" == stop || "${seen[0]}" == restart ]]; then
         typed=("${seen[@]:1}")
         seen=("${seen[0]}")
     fi
 
     case "${#seen[@]}" in
         0)
-            COMPREPLY=($(compgen -W 'gui list inspect run start stop status logs completion iamllm' -- "$cur"))
+            COMPREPLY=($(compgen -W 'gui list inspect run start stop restart status logs completion iamllm' -- "$cur"))
             ;;
         1)
             case "${seen[0]}" in
                 completion)
                     COMPREPLY=($(compgen -W 'bash zsh fish' -- "$cur"))
                     ;;
-                inspect|run|start|stop|logs)
+                inspect|run|start|stop|restart|logs)
                     # The names come from the runbook.yml being completed for,
                     # asked of the very runbook being typed. bash has nowhere to
                     # show the description behind the tab, so it is cut off. A
@@ -99,6 +99,7 @@ _runbook() {
         'run:run one command in this terminal'
         'start:run commands in the background'
         'stop:end commands that were started'
+        'restart:stop commands and start them again'
         'status:show which commands are running'
         'logs:listen to what a started command writes, or to all of them'
         'completion:print a completion script for bash, zsh or fish'
@@ -124,7 +125,7 @@ _runbook() {
                 completion)
                     (( CURRENT == 2 )) && _values 'shell' bash zsh fish
                     ;;
-                start|stop)
+                start|stop|restart)
                     # Any number of names, each offered once.
                     local -a names
                     names=(${${(f)"$($prog list 2>/dev/null)"}/$'\t'/:})
@@ -169,12 +170,12 @@ function __runbook_argument_of
     and contains -- "$seen[1]" $argv
 end
 
-# True while any of the names start or stop take is being typed, which is every
+# True while any of the names start, stop or restart take is being typed, which is every
 # word after the command.
 function __runbook_names_of_several
     set -l seen (__runbook_seen)
     test (count $seen) -ge 1
-    and contains -- "$seen[1]" start stop
+    and contains -- "$seen[1]" start stop restart
 end
 
 # The command names, asked of the very runbook being typed. Each line is a name
@@ -201,6 +202,8 @@ complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a start \
     -d 'run commands in the background'
 complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a stop \
     -d 'end commands that were started'
+complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a restart \
+    -d 'stop commands and start them again'
 complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a status \
     -d 'show which commands are running'
 complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a logs \
