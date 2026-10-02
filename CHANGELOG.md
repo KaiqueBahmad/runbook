@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.4.1] - Work In Progress
+## [0.4.1] - 2026-10-01
 
 ### Changed
 - The project's own `runbook.yml` and `runbook.windows.yml` build the development binary as `bin/runbook-dev`, so it no longer gets mixed up with an installed `runbook`. `run.sh` is gone: `app/start` builds and opens the window itself
