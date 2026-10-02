@@ -19,7 +19,7 @@ app/help:
 app/install-completion:
   description: Install the bash completion of the last build for this user
   dir: .
-  run: mkdir -p ~/.local/share/bash-completion/completions && ./bin/runbook-dev completion bash > ~/.local/share/bash-completion/completions/runbook-dev
+  run: mkdir -p ~/.local/share/bash-completion/completions && { ./bin/runbook-dev completion bash; echo 'complete -F _runbook runbook-dev'; } > ~/.local/share/bash-completion/completions/runbook-dev
 
 go/build:
   description: Compile the binary into bin/ with -dev sufixe
