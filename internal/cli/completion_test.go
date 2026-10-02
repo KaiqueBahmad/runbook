@@ -108,16 +108,31 @@ func TestBashCompletionSuggests(t *testing.T) {
 		{"more names after the first restart takes", []string{"runbook", "restart", "lint", ""}, "services/api"},
 		{"no names left to start", []string{"runbook", "start", "lint", "services/api", ""}, ""},
 		{"the names logs takes", []string{"runbook", "logs", ""}, "services/api lint"},
+		{"the names in the file -u picks", []string{"runbook", "-u", "run", ""}, "mine"},
+		{"the names in the file --user picks", []string{"runbook", "--user", "start", ""}, "mine"},
+		{"the names in the file -f picks", []string{"runbook", "-f", "other.yml", "run", ""}, "from:other.yml"},
+		{"the names in the file --file picks", []string{"runbook", "--file", "other.yml", "stop", ""}, "from:other.yml"},
+		{"the names in a file under ~", []string{"runbook", "-f", "~/other.yml", "run", ""}, "from:/home/someone/other.yml"},
 	}
 
 	// The script asks the runbook being completed for the names, so put one on
-	// the PATH that answers.
+	// the PATH that answers. It names the file -f or -u picked, if any, so the
+	// tests can tell the flags were passed on.
 	stub := filepath.Join(t.TempDir(), "runbook")
-	const answer = "#!/bin/sh\nprintf 'services/api\\tThe Spring backend\\n'\nprintf 'lint\\n'\n"
+	const answer = `#!/bin/sh
+case "$2" in
+-u) printf 'mine\n'; exit ;;
+-f) printf 'from:%s\n' "$3"; exit ;;
+esac
+printf 'services/api\tThe Spring backend\n'
+printf 'lint\n'
+`
 	if err := os.WriteFile(stub, []byte(answer), 0o700); err != nil {
 		t.Fatalf("writing %s: %v", stub, err)
 	}
-	env := append(os.Environ(), "PATH="+filepath.Dir(stub)+string(os.PathListSeparator)+os.Getenv("PATH"))
+	env := append(os.Environ(),
+		"PATH="+filepath.Dir(stub)+string(os.PathListSeparator)+os.Getenv("PATH"),
+		"HOME=/home/someone")
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

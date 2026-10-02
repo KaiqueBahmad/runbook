@@ -23,7 +23,7 @@ func completionScript(shell string) string {
 
 const bashCompletion = `# runbook completion for bash
 _runbook() {
-    local cur prev file i
+    local cur prev i
     local -a seen opt
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
@@ -40,11 +40,13 @@ _runbook() {
         return
     fi
 
-    # What has been typed already, flags and their values left out.
-    file=""
+    # What has been typed already, flags and their values left out. The flags
+    # that pick the runbook.yml are kept in opt, to be passed on to list. bash
+    # leaves a ~ in a typed word as it is, so it is expanded here.
     for ((i = 1; i < COMP_CWORD; i++)); do
         case "${COMP_WORDS[i]}" in
-            -f|--file) i=$((i + 1)); file="${COMP_WORDS[i]}" ;;
+            -f|--file) i=$((i + 1)); opt=(-f "${COMP_WORDS[i]/#\~\//$HOME/}") ;;
+            -u|--user) opt=(-u) ;;
             -*) ;;
             *) seen+=("${COMP_WORDS[i]}") ;;
         esac
@@ -72,7 +74,6 @@ _runbook() {
                     # asked of the very runbook being typed. bash has nowhere to
                     # show the description behind the tab, so it is cut off. A
                     # newline IFS keeps names with spaces in one piece.
-                    [[ -n "$file" ]] && opt=(-f "$file")
                     local IFS=$'\n' name t
                     for name in $(compgen -W "$("${COMP_WORDS[0]}" list "${opt[@]}" 2>/dev/null | cut -f1)" -- "$cur"); do
                         for t in "${typed[@]}"; do
@@ -119,6 +120,16 @@ _runbook() {
             _describe 'command' commands
             ;;
         argument)
+            # The flags that pick the runbook.yml, passed on to list. opt_args
+            # keeps a value the way it was typed, quotes and ~ included.
+            local -a opt
+            if (( ${+opt_args[-u]} || ${+opt_args[--user]} )); then
+                opt=(-u)
+            elif (( ${+opt_args[-f]} || ${+opt_args[--file]} )); then
+                local file=${(Q)${opt_args[-f]:-$opt_args[--file]}}
+                opt=(-f ${file/#\~\//$HOME/})
+            fi
+
             # words and CURRENT are the command's own arguments here, so
             # CURRENT is 2 only while the first one is being typed.
             case $words[1] in
@@ -128,7 +139,7 @@ _runbook() {
                 start|stop|restart)
                     # Any number of names, each offered once.
                     local -a names
-                    names=(${${(f)"$($prog list 2>/dev/null)"}/$'\t'/:})
+                    names=(${${(f)"$($prog list $opt 2>/dev/null)"}/$'\t'/:})
                     names=(${names:#(${(j:|:)~${(b)words[2,CURRENT-1]}}):*})
                     _describe 'command' names
                     ;;
@@ -136,7 +147,7 @@ _runbook() {
                     # _describe wants name:description, list gives name<tab>
                     # description, so the first tab of each line becomes a colon.
                     local -a names
-                    names=(${${(f)"$($prog list 2>/dev/null)"}/$'\t'/:})
+                    names=(${${(f)"$($prog list $opt 2>/dev/null)"}/$'\t'/:})
                     (( CURRENT == 2 )) && _describe 'command' names
                     ;;
             esac
@@ -178,11 +189,20 @@ function __runbook_names_of_several
     and contains -- "$seen[1]" start stop restart
 end
 
-# The command names, asked of the very runbook being typed. Each line is a name
-# and, behind a tab, the description fish shows beside it.
+# The command names, asked of the very runbook being typed and of the
+# runbook.yml its -f or -u picks. Each line is a name and, behind a tab, the
+# description fish shows beside it.
 function __runbook_names
-    set -l prog (commandline -opc)[1]
-    $prog list 2>/dev/null
+    set -l words (commandline -opc)
+    set -l opt
+    for i in (seq 2 (count $words))
+        if contains -- $words[$i] -u --user
+            set opt -u
+        else if contains -- $words[$i] -f --file; and test $i -lt (count $words)
+            set opt -f (string replace -r '^~/' "$HOME/" -- $words[(math $i + 1)])
+        end
+    end
+    $words[1] list $opt 2>/dev/null
 end
 
 complete -c runbook -f

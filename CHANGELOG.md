@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The project's own `runbook.yml` and `runbook.windows.yml` build the development binary as `bin/runbook-dev`, so it no longer gets mixed up with an installed `runbook`. `run.sh` is gone: `app/start` builds and opens the window itself
 
 ### Fixed
+- Completing the name of a command after `-f` or `-u` offers the names in the runbook.yml the flag picks, not the one found from the current directory, in bash, zsh and fish alike. A path such as `-f ~/work/runbook.yml` works too
 - `app/install-completion` in the project's `runbook.yml` makes `runbook-dev <Tab>` complete. The script it saved only registered completion for `runbook`
 
 ## [0.4.0] - 2026-09-27
