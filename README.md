@@ -237,5 +237,4 @@ To build it:
 go build -o bin/runbook ./cmd/runbook
 ```
 
-Or run `./run.sh`, which builds into `bin/` and then starts what it built, passing your
-arguments along. `go test ./...` runs the tests.
+`go test ./...` runs the tests.
