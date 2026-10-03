@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Changed
+- Completing a name after `runbook stop` or `runbook logs` offers only the commands that are running, in bash, zsh and fish alike. zsh and fish show how long each has been up and its pid beside it
+
 ## [0.4.1] - 2026-10-01
 
 ### Changed
@@ -14,7 +19,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Completing the name of a command after `-f` or `-u` offers the names in the runbook.yml the flag picks, not the one found from the current directory, in bash, zsh and fish alike. A path such as `-f ~/work/runbook.yml` works too
-- `app/install-completion` in the project's `runbook.yml` makes `runbook-dev <Tab>` complete. The script it saved only registered completion for `runbook`
 
 ## [0.4.0] - 2026-09-27
 

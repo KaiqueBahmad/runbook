@@ -102,24 +102,39 @@ func TestBashCompletionSuggests(t *testing.T) {
 		{"a half typed name", []string{"runbook", "run", "l"}, "lint"},
 		{"nothing after the name", []string{"runbook", "run", "lint", ""}, ""},
 		{"the names start takes", []string{"runbook", "start", ""}, "services/api lint"},
-		{"the names stop takes", []string{"runbook", "stop", ""}, "services/api lint"},
+		{"the running names stop takes", []string{"runbook", "stop", ""}, "services/api"},
+		{"a half typed running name", []string{"runbook", "stop", "s"}, "services/api"},
+		{"no name that is not running", []string{"runbook", "stop", "l"}, ""},
 		{"more names after the first start takes", []string{"runbook", "start", "lint", ""}, "services/api"},
-		{"more names after the first stop takes", []string{"runbook", "stop", "services/api", ""}, "lint"},
+		{"no running names left to stop", []string{"runbook", "stop", "services/api", ""}, ""},
 		{"more names after the first restart takes", []string{"runbook", "restart", "lint", ""}, "services/api"},
 		{"no names left to start", []string{"runbook", "start", "lint", "services/api", ""}, ""},
-		{"the names logs takes", []string{"runbook", "logs", ""}, "services/api lint"},
+		{"the running names logs takes", []string{"runbook", "logs", ""}, "services/api"},
+		{"nothing after the name logs takes", []string{"runbook", "logs", "services/api", ""}, ""},
+		{"the running names in the file -u picks for logs", []string{"runbook", "-u", "logs", ""}, "running:mine"},
 		{"the names in the file -u picks", []string{"runbook", "-u", "run", ""}, "mine"},
 		{"the names in the file --user picks", []string{"runbook", "--user", "start", ""}, "mine"},
 		{"the names in the file -f picks", []string{"runbook", "-f", "other.yml", "run", ""}, "from:other.yml"},
-		{"the names in the file --file picks", []string{"runbook", "--file", "other.yml", "stop", ""}, "from:other.yml"},
+		{"the names in the file --file picks", []string{"runbook", "--file", "other.yml", "start", ""}, "from:other.yml"},
+		{"the running names in the file -f picks", []string{"runbook", "-f", "other.yml", "stop", ""}, "running:other.yml"},
+		{"the running names in the file -u picks", []string{"runbook", "-u", "stop", ""}, "running:mine"},
 		{"the names in a file under ~", []string{"runbook", "-f", "~/other.yml", "run", ""}, "from:/home/someone/other.yml"},
 	}
 
 	// The script asks the runbook being completed for the names, so put one on
 	// the PATH that answers. It names the file -f or -u picked, if any, so the
-	// tests can tell the flags were passed on.
+	// tests can tell the flags were passed on. Of the two commands it has, only
+	// services/api is running.
 	stub := filepath.Join(t.TempDir(), "runbook")
 	const answer = `#!/bin/sh
+if [ "$1" = status ]; then
+    case "$2" in
+    -u) printf 'running:mine\t1\t1s\n'; exit ;;
+    -f) printf 'running:%s\t1\t1s\n' "$3"; exit ;;
+    esac
+    printf 'services/api\t526142\t12s\n'
+    exit
+fi
 case "$2" in
 -u) printf 'mine\n'; exit ;;
 -f) printf 'from:%s\n' "$3"; exit ;;

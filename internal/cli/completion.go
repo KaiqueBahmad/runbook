@@ -71,11 +71,14 @@ _runbook() {
                     ;;
                 inspect|run|start|stop|restart|logs)
                     # The names come from the runbook.yml being completed for,
-                    # asked of the very runbook being typed. bash has nowhere to
-                    # show the description behind the tab, so it is cut off. A
+                    # asked of the very runbook being typed: every one of them,
+                    # or for stop and logs only those that are running. bash has nowhere
+                    # to show what is behind the tab, so it is cut off. A
                     # newline IFS keeps names with spaces in one piece.
+                    local ask=list
+                    [[ "${seen[0]}" == stop || "${seen[0]}" == logs ]] && ask=status
                     local IFS=$'\n' name t
-                    for name in $(compgen -W "$("${COMP_WORDS[0]}" list "${opt[@]}" 2>/dev/null | cut -f1)" -- "$cur"); do
+                    for name in $(compgen -W "$("${COMP_WORDS[0]}" "$ask" "${opt[@]}" 2>/dev/null | cut -f1)" -- "$cur"); do
                         for t in "${typed[@]}"; do
                             [[ "$t" == "$name" ]] && continue 2
                         done
@@ -139,11 +142,20 @@ _runbook() {
                 start|stop|restart)
                     # Any number of names, each offered once.
                     local -a names
-                    names=(${${(f)"$($prog list $opt 2>/dev/null)"}/$'\t'/:})
+                    if [[ $words[1] == stop ]]; then
+                        _runbook_running
+                    else
+                        names=(${${(f)"$($prog list $opt 2>/dev/null)"}/$'\t'/:})
+                    fi
                     names=(${names:#(${(j:|:)~${(b)words[2,CURRENT-1]}}):*})
                     _describe 'command' names
                     ;;
-                inspect|run|logs)
+                logs)
+                    local -a names
+                    _runbook_running
+                    (( CURRENT == 2 )) && _describe 'command' names
+                    ;;
+                inspect|run)
                     # _describe wants name:description, list gives name<tab>
                     # description, so the first tab of each line becomes a colon.
                     local -a names
@@ -153,6 +165,18 @@ _runbook() {
             esac
             ;;
     esac
+}
+
+# Fills names with the commands that are running, for stop and logs. status
+# gives each as name<tab>pid<tab>uptime, so they are described by how long
+# they are up.
+_runbook_running() {
+    local line
+    local -a fields
+    for line in ${(f)"$($prog status $opt 2>/dev/null)"}; do
+        fields=(${(ps:\t:)line})
+        names+=("$fields[1]:up $fields[3], pid $fields[2]")
+    done
 }
 compdef _runbook runbook
 `
@@ -181,17 +205,18 @@ function __runbook_argument_of
     and contains -- "$seen[1]" $argv
 end
 
-# True while any of the names start, stop or restart take is being typed, which is every
-# word after the command.
+# True while any of the names one of the given commands takes is being typed,
+# which is every word after the command.
 function __runbook_names_of_several
     set -l seen (__runbook_seen)
     test (count $seen) -ge 1
-    and contains -- "$seen[1]" start stop restart
+    and contains -- "$seen[1]" $argv
 end
 
 # The command names, asked of the very runbook being typed and of the
-# runbook.yml its -f or -u picks. Each line is a name and, behind a tab, the
-# description fish shows beside it.
+# runbook.yml its -f or -u picks: every one with list, or the running ones with
+# status. Each line is a name and, behind a tab, the description fish shows
+# beside it; status gives a pid and an uptime there, which become one.
 function __runbook_names
     set -l words (commandline -opc)
     set -l opt
@@ -202,7 +227,7 @@ function __runbook_names
             set opt -f (string replace -r '^~/' "$HOME/" -- $words[(math $i + 1)])
         end
     end
-    $words[1] list $opt 2>/dev/null
+    $words[1] $argv[1] $opt 2>/dev/null | string replace -r '\t([^\t]*)\t(.*)' '\tup $2, pid $1'
 end
 
 complete -c runbook -f
@@ -234,8 +259,12 @@ complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a iamllm \
     -d 'print what a language model needs to know about Runbook'
 complete -c runbook -n '__runbook_argument_of completion' \
     -a 'bash zsh fish' -d shell
-complete -c runbook -n '__runbook_argument_of inspect run logs' \
-    -a '(__runbook_names)' -d command
-complete -c runbook -n '__runbook_names_of_several' \
-    -a '(__runbook_names)' -d command
+complete -c runbook -n '__runbook_argument_of inspect run' \
+    -a '(__runbook_names list)' -d command
+complete -c runbook -n '__runbook_argument_of logs' \
+    -a '(__runbook_names status)' -d running
+complete -c runbook -n '__runbook_names_of_several start restart' \
+    -a '(__runbook_names list)' -d command
+complete -c runbook -n '__runbook_names_of_several stop' \
+    -a '(__runbook_names status)' -d running
 `
