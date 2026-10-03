@@ -17,9 +17,9 @@ app/help:
   run: ./runbook-dev --help
 
 app/install-completion:
-  description: Install the bash completion of the last build for this user
+  description: Build into bin/ and install its bash completion for this user, apart from runbook's own
   dir: .
-  run: mkdir -p ~/.local/share/bash-completion/completions && { ./bin/runbook-dev completion bash; echo 'complete -F _runbook runbook-dev'; } > ~/.local/share/bash-completion/completions/runbook-dev
+  run: go build -o bin/runbook-dev ./cmd/runbook && mkdir -p ~/.local/share/bash-completion/completions && ./bin/runbook-dev completion bash | sed -e 's/^_runbook()/_runbook_dev()/' -e 's/^complete -F _runbook runbook$/complete -F _runbook_dev runbook-dev/' > ~/.local/share/bash-completion/completions/runbook-dev
 
 go/build:
   description: Compile the binary into bin/ with -dev sufixe
