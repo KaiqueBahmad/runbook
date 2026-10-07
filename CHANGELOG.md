@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [0.4.2] - 2026-10-07
 
 ### Changed
 - Completing a name after `runbook stop` or `runbook logs` offers only the commands that are running, in bash, zsh and fish alike. zsh and fish show how long each has been up and its pid beside it
