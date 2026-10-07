@@ -4,7 +4,9 @@
 package state
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -84,6 +86,36 @@ func Write(file string, st State) error {
 		return fmt.Errorf("writing %s: %w", file, err)
 	}
 	return nil
+}
+
+// Each calls do with what start remembered of every command of one
+// runbook.yml, by name, in the order of the names. A file this Runbook cannot
+// read is passed over, as Sweep does, and a runbook.yml that never started
+// anything has none to give.
+func Each(work string, do func(name string, st State)) error {
+	dir := Dir(work)
+	err := filepath.WalkDir(dir, func(file string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() || !strings.HasSuffix(file, fileExt) {
+			return nil
+		}
+		st, err := Read(file)
+		if err != nil {
+			return nil
+		}
+		rel, err := filepath.Rel(dir, file)
+		if err != nil {
+			return err
+		}
+		do(filepath.ToSlash(strings.TrimSuffix(rel, fileExt)), st)
+		return nil
+	})
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	return err
 }
 
 // Uptime is how long ago a command was started, for a message.

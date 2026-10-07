@@ -62,7 +62,7 @@ _runbook() {
 
     case "${#seen[@]}" in
         0)
-            COMPREPLY=($(compgen -W 'gui list inspect run start stop restart status logs update completion iamllm' -- "$cur"))
+            COMPREPLY=($(compgen -W 'gui list inspect run start stop restart status ps logs update completion iamllm' -- "$cur"))
             ;;
         1)
             case "${seen[0]}" in
@@ -105,6 +105,7 @@ _runbook() {
         'stop:end commands that were started'
         'restart:stop commands and start them again'
         'status:show which commands are running'
+        'ps:show every command that is running, of every runbook.yml'
         'logs:listen to what a started command writes, or to all of them'
         'update:install the latest release of runbook'
         'completion:print a completion script for bash, zsh or fish'
@@ -252,6 +253,8 @@ complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a restart \
     -d 'stop commands and start them again'
 complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a status \
     -d 'show which commands are running'
+complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a ps \
+    -d 'show every command that is running, of every runbook.yml'
 complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a logs \
     -d 'listen to what a started command writes, or to all of them'
 complete -c runbook -n 'test (count (__runbook_seen)) -eq 0' -a update \

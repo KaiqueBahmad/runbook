@@ -87,10 +87,10 @@ func TestBashCompletionSuggests(t *testing.T) {
 		words []string // the command line, ending with the word being completed
 		want  string
 	}{
-		{"a command", []string{"runbook", ""}, "gui list inspect run start stop restart status logs update completion iamllm"},
+		{"a command", []string{"runbook", ""}, "gui list inspect run start stop restart status ps logs update completion iamllm"},
 		{"a half typed command", []string{"runbook", "l"}, "list logs"},
 		{"nothing after gui", []string{"runbook", "gui", ""}, ""},
-		{"a command after the flag", []string{"runbook", "-f", "runbook.yml", ""}, "gui list inspect run start stop restart status logs update completion iamllm"},
+		{"a command after the flag", []string{"runbook", "-f", "runbook.yml", ""}, "gui list inspect run start stop restart status ps logs update completion iamllm"},
 		{"the shell completion takes", []string{"runbook", "completion", ""}, "bash zsh fish"},
 		{"a half typed shell", []string{"runbook", "completion", "z"}, "zsh"},
 		{"nothing after list", []string{"runbook", "list", ""}, ""},

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Added
+- `runbook ps` shows every command that is running, of every runbook.yml, behind the directory of the runbook.yml it belongs to. Piped, it gives the full path of the runbook.yml, separated by tabs. Runbook now writes down which runbook.yml each of its directories in `~/.runbook` is for, so a command started by an older Runbook shows the name of that directory instead until it is started again
+
 ## [0.5.0] - 2026-10-07
 
 ### Added

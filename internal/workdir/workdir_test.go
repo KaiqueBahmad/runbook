@@ -1,8 +1,11 @@
 package workdir
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -123,6 +126,65 @@ func TestEnsure(t *testing.T) {
 		}
 		if len(left) != 0 {
 			t.Errorf("%d files were put in the project, want it left as it was found", len(left))
+		}
+	})
+}
+
+func TestRecorded(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+
+	t.Run("gives back the path Ensure was given", func(t *testing.T) {
+		path := "/home/someone/project/runbook.yml"
+		dir, err := Ensure(path)
+		if err != nil {
+			t.Fatalf("Ensure(): %v", err)
+		}
+		got, err := Recorded(dir)
+		if err != nil {
+			t.Fatalf("Recorded(): %v", err)
+		}
+		if got != path {
+			t.Errorf("Recorded() = %q, want %q", got, path)
+		}
+	})
+
+	t.Run("a directory from before it was written down has none", func(t *testing.T) {
+		dir := filepath.Join(home, Name, "old-0123456789abcdef")
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			t.Fatalf("creating %s: %v", dir, err)
+		}
+		if _, err := Recorded(dir); !errors.Is(err, fs.ErrNotExist) {
+			t.Errorf("Recorded() error = %v, want fs.ErrNotExist", err)
+		}
+	})
+}
+
+func TestAll(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+
+	t.Run("nothing kept yet is none", func(t *testing.T) {
+		dirs, err := All()
+		if err != nil {
+			t.Fatalf("All(): %v", err)
+		}
+		if len(dirs) != 0 {
+			t.Errorf("All() = %q, want none", dirs)
+		}
+	})
+
+	t.Run("every runbook.yml has its directory", func(t *testing.T) {
+		one, _ := Ensure("/home/someone/api/runbook.yml")
+		two, _ := Ensure("/home/someone/web/runbook.yml")
+		dirs, err := All()
+		if err != nil {
+			t.Fatalf("All(): %v", err)
+		}
+		if len(dirs) != 2 || !slices.Contains(dirs, one) || !slices.Contains(dirs, two) {
+			t.Errorf("All() = %q, want %q and %q", dirs, one, two)
 		}
 	})
 }

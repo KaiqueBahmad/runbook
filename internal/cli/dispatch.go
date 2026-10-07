@@ -47,6 +47,18 @@ func Main(args []string) int {
 		fmt.Print(primer)
 		return 0
 
+	// ps is every runbook.yml at once, so it looks for none of them.
+	case cmdPS:
+		found, err := runner.StatusAll()
+		if err != nil {
+			return report(err)
+		}
+		// Without a home there is nothing to shorten, and the paths are
+		// shown whole.
+		home, _ := os.UserHomeDir()
+		runner.PrintStatusAll(os.Stdout, found, isTerminal(os.Stdout), home)
+		return 0
+
 	// update is about this binary, not any runbook.yml.
 	case cmdUpdate:
 		return runUpdate(os.Stdin, os.Stdout, os.Stderr)

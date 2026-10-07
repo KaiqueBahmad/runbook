@@ -42,6 +42,7 @@ Commands:
   restart <name>...
                stop them if they are running, and start them again
   status       show which commands are running, and at which process id
+  ps           show every command that is running, of every runbook.yml
   logs [name]  listen to what a started command writes, from now on; with
                no name, to every command that is running at once
   update       install the latest release, for the .deb; say where it is
@@ -81,6 +82,7 @@ const (
 	cmdStop       = "stop"
 	cmdRestart    = "restart"
 	cmdStatus     = "status"
+	cmdPS         = "ps"
 	cmdLogs       = "logs"
 	cmdUpdate     = "update"
 	cmdCompletion = "completion"
@@ -94,7 +96,7 @@ const (
 const cmdBroadcast = runner.BroadcastCommand
 
 // commands is every command runbook offers.
-var commands = []string{cmdGUI, cmdList, cmdInspect, cmdRun, cmdStart, cmdStop, cmdRestart, cmdStatus, cmdLogs, cmdUpdate, cmdCompletion, cmdIAmLLM}
+var commands = []string{cmdGUI, cmdList, cmdInspect, cmdRun, cmdStart, cmdStop, cmdRestart, cmdStatus, cmdPS, cmdLogs, cmdUpdate, cmdCompletion, cmdIAmLLM}
 
 // named are the commands that take the name of a command in the runbook.yml.
 var named = []string{cmdInspect, cmdRun, cmdStart, cmdStop, cmdRestart, cmdLogs}
@@ -177,6 +179,10 @@ func parseArgs(args []string) (invocation, error) {
 
 	if err := checkRest(in); err != nil {
 		return invocation{}, err
+	}
+	// ps looks at every runbook.yml there is, so there is none to pick.
+	if in.cmd == cmdPS && path != "" {
+		return invocation{}, fmt.Errorf("%s shows every runbook.yml, so it takes no -f or -u", cmdPS)
 	}
 	// update is about the binary, so there is no runbook.yml to pick.
 	if in.cmd == cmdUpdate && path != "" {

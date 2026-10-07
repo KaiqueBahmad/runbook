@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // Name is the directory Runbook keeps everything it knows in, in the home
@@ -24,6 +25,11 @@ const Name = ".runbook"
 // to has only so many characters to give.
 const maxName = 16
 
+// pathFile is the file in the directory of one runbook.yml that says which
+// runbook.yml it is. The name of the directory is a fingerprint of the path,
+// which cannot be turned back into it.
+const pathFile = "path"
+
 // Path is where the files of the runbook.yml at path live. It wants the full
 // path of the file, since that is what tells one project from another.
 func Path(path string) (string, error) {
@@ -34,7 +40,8 @@ func Path(path string) (string, error) {
 	return filepath.Join(home, Name, key(path)), nil
 }
 
-// Ensure is Path, with the directory made if it was not there yet.
+// Ensure is Path, with the directory made if it was not there yet, and the
+// path of the runbook.yml written down in it for Recorded to read back.
 func Ensure(path string) (string, error) {
 	dir, err := Path(path)
 	if err != nil {
@@ -43,7 +50,47 @@ func Ensure(path string) (string, error) {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", fmt.Errorf("creating %s: %w", dir, err)
 	}
+	file := filepath.Join(dir, pathFile)
+	if err := os.WriteFile(file, []byte(path+"\n"), 0o600); err != nil {
+		return "", fmt.Errorf("writing %s: %w", file, err)
+	}
 	return dir, nil
+}
+
+// All is the directory of every runbook.yml Runbook keeps files for. With
+// nothing kept yet there are none, and that is not an error.
+func All() ([]string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, fmt.Errorf("finding the home directory Runbook keeps its files in: %w", err)
+	}
+	root := filepath.Join(home, Name)
+	entries, err := os.ReadDir(root)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	var dirs []string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			dirs = append(dirs, filepath.Join(root, entry.Name()))
+		}
+	}
+	return dirs, nil
+}
+
+// Recorded is the full path of the runbook.yml whose files are kept in dir, as
+// Ensure wrote it down. A directory made by a Runbook from before it did gives
+// an error matching fs.ErrNotExist.
+func Recorded(dir string) (string, error) {
+	data, err := os.ReadFile(filepath.Join(dir, pathFile))
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSuffix(string(data), "\n"), nil
 }
 
 // key names the directory of one runbook.yml: what the project is called, so

@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -189,4 +190,41 @@ func TestSweep(t *testing.T) {
 func exists(file string) bool {
 	_, err := os.Stat(file)
 	return err == nil
+}
+
+func TestEach(t *testing.T) {
+	work := t.TempDir()
+
+	t.Run("a runbook.yml that never started anything has none", func(t *testing.T) {
+		if err := Each(work, func(string, State) { t.Error("Each() gave a command") }); err != nil {
+			t.Errorf("Each(): %v", err)
+		}
+	})
+
+	t.Run("every command, by name, in order", func(t *testing.T) {
+		for i, name := range []string{"web/server", "api"} {
+			if err := Write(File(work, name), State{PID: 100 + i, Boot: "1", Since: 1}); err != nil {
+				t.Fatalf("Write(): %v", err)
+			}
+		}
+		// What is not a state file, and one this Runbook cannot read, are
+		// passed over.
+		if err := os.WriteFile(filepath.Join(Dir(work), "notes"), nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(File(work, "newer"), []byte("1 2 3 4\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+
+		var got []string
+		err := Each(work, func(name string, st State) {
+			got = append(got, fmt.Sprintf("%s %d", name, st.PID))
+		})
+		if err != nil {
+			t.Fatalf("Each(): %v", err)
+		}
+		if want := "api 101, web/server 100"; strings.Join(got, ", ") != want {
+			t.Errorf("Each() gave %q, want %s", got, want)
+		}
+	})
 }

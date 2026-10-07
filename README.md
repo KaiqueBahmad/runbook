@@ -217,6 +217,22 @@ is gone — `runbook run` is what hands you the whole of a command's output. Pip
 somewhere rather than shown in a terminal, the name and the line are separated by
 a tab, for something other than a person to take apart.
 
+`runbook ps` shows what is running everywhere, not just in this project: every
+command any runbook.yml has started, behind the directory of the runbook.yml it
+came from, with your home directory as `~`:
+
+```
+~/projetos/api   web/server  526142  2h14m0s
+~/projetos/dash  dev          88213  12m3s
+~                notes/sync    4410  3h1m0s
+```
+
+It looks at every runbook.yml at once, so it takes no `-f` or `-u`. Piped
+somewhere rather than shown in a terminal, it gives the full path of each
+runbook.yml instead, separated from the rest by tabs. A command started by a
+Runbook older than `ps` goes by the name of the directory Runbook keeps for it
+in `~/.runbook`, and has no path when piped, until it is started again.
+
 ## What Runbook is not
 
 - Not a container runtime or sandbox — everything runs directly on your machine with your normal environment and permissions.

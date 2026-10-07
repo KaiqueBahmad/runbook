@@ -64,6 +64,7 @@ to be standing in.
   runbook stop <name>...   end ones that were started
   runbook restart <name>...  stop them if running, and start them again
   runbook status        which commands are running, and at which process id
+  runbook ps            every command that is running, of every runbook.yml
   runbook logs [name]   listen to what a started command writes, or with no
                         name to every command that is running at once
   runbook -f <path>     work on a runbook.yml somewhere other than here
@@ -76,8 +77,10 @@ to be standing in.
 
 Use the exact name runbook list gives. Its output is made to be read by a
 program when it is not going to a terminal: list prints "name<TAB>description",
-and status prints "name<TAB>pid<TAB>uptime", one command per line. When nothing
-is running, status prints nothing at all.
+status prints "name<TAB>pid<TAB>uptime", and ps prints the full path of the
+runbook.yml in front of that, one command per line. When nothing is running,
+status and ps print nothing at all. ps takes no -f or -u, and the path it gives
+is empty for a command started by a Runbook older than ps.
 
 run is the one that hands you the output. It runs the command in front of you,
 passes on what it writes, and exits with the status the command exited with, so
