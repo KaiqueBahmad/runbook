@@ -44,6 +44,8 @@ Commands:
   status       show which commands are running, and at which process id
   logs [name]  listen to what a started command writes, from now on; with
                no name, to every command that is running at once
+  update       install the latest release, for the .deb; say where it is
+               for any other build
   completion   print a completion script for bash, zsh or fish
   iamllm       print what a language model needs to know about Runbook
 
@@ -80,6 +82,7 @@ const (
 	cmdRestart    = "restart"
 	cmdStatus     = "status"
 	cmdLogs       = "logs"
+	cmdUpdate     = "update"
 	cmdCompletion = "completion"
 	cmdIAmLLM     = "iamllm"
 )
@@ -91,7 +94,7 @@ const (
 const cmdBroadcast = runner.BroadcastCommand
 
 // commands is every command runbook offers.
-var commands = []string{cmdGUI, cmdList, cmdInspect, cmdRun, cmdStart, cmdStop, cmdRestart, cmdStatus, cmdLogs, cmdCompletion, cmdIAmLLM}
+var commands = []string{cmdGUI, cmdList, cmdInspect, cmdRun, cmdStart, cmdStop, cmdRestart, cmdStatus, cmdLogs, cmdUpdate, cmdCompletion, cmdIAmLLM}
 
 // named are the commands that take the name of a command in the runbook.yml.
 var named = []string{cmdInspect, cmdRun, cmdStart, cmdStop, cmdRestart, cmdLogs}
@@ -174,6 +177,10 @@ func parseArgs(args []string) (invocation, error) {
 
 	if err := checkRest(in); err != nil {
 		return invocation{}, err
+	}
+	// update is about the binary, so there is no runbook.yml to pick.
+	if in.cmd == cmdUpdate && path != "" {
+		return invocation{}, fmt.Errorf("%s updates runbook itself, so it takes no -f or -u", cmdUpdate)
 	}
 
 	if path != "" {

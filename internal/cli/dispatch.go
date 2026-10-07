@@ -20,7 +20,7 @@ func Main(args []string) int {
 		return 0
 	}
 	if errors.Is(err, errVersionRequested) {
-		fmt.Println("runbook", currentVersion())
+		fmt.Println(versionLine())
 		return 0
 	}
 	if err != nil {
@@ -46,6 +46,10 @@ func Main(args []string) int {
 	case cmdIAmLLM:
 		fmt.Print(primer)
 		return 0
+
+	// update is about this binary, not any runbook.yml.
+	case cmdUpdate:
+		return runUpdate(os.Stdin, os.Stdout, os.Stderr)
 
 	// broadcast is Runbook talking to itself: start left it holding one end of
 	// a pipe, and all it needs is the address to hand what comes down it to.

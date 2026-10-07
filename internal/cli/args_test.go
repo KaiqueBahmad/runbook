@@ -82,6 +82,10 @@ func TestParseArgs(t *testing.T) {
 		{"logs with two names", []string{"logs", "api", "web"}, "", nil, "", true},
 		{"broadcast without an address", []string{"broadcast"}, "", nil, "", true},
 		{"status with a name", []string{"status", "api"}, "", nil, "", true},
+		{"update", []string{"update"}, cmdUpdate, nil, "", false},
+		{"update with an argument", []string{"update", "now"}, "", nil, "", true},
+		{"update with the flag", []string{"update", "-f", etc}, "", nil, "", true},
+		{"update with the user flag", []string{"-u", "update"}, "", nil, "", true},
 		{"gui with a name", []string{"gui", "api"}, "", nil, "", true},
 	}
 

@@ -48,8 +48,11 @@ git push origin main v0.2.0
 
 **What happens:**
 - `.github/workflows/release.yml` runs the same checks as CI against the tagged commit
-- It builds Runbook for Linux and Windows (amd64) and checks that each binary's
-  `--version` prints exactly the tag
+- It builds Runbook once for each package — the Linux `.tar.gz`, the `.deb` and
+  the Windows `.zip` — with `-X runbook/internal/cli.channel=tar`, `deb` or
+  `zip`, and checks that each binary's `--version` prints exactly the tag and its
+  channel, such as `runbook v0.2.0 (deb)`. The channel is what `runbook update`
+  goes by: only the `deb` build installs a new version itself
 - It publishes a GitHub release named after the tag, with the binaries packed as
   `runbook_v0.2.0_linux_amd64.tar.gz` and `runbook_v0.2.0_windows_amd64.zip`, a
   `runbook_0.2.0_amd64.deb`, a `checksums.txt`, and the `[0.2.0]` section of

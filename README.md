@@ -27,6 +27,18 @@ which also sets up the bash and fish completion:
 sudo apt install ./runbook_*_amd64.deb
 ```
 
+To update it later, `runbook update` downloads the latest `.deb`, checks it
+against the checksums the release published, and installs it with `sudo apt`,
+which asks for your password:
+
+```
+runbook update
+```
+
+It only updates a Runbook installed from the `.deb`. Any other build — the
+`.tar.gz`, the Windows `.zip`, or one built from source — tells you where the
+latest one is instead.
+
 Anywhere else, build it from source. Runbook is a single Go binary. You build it once and put it on your `PATH`.
 
 You need Go 1.26 or newer (`go version` says which you have).

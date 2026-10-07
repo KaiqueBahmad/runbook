@@ -19,11 +19,20 @@ jobs:
           # The oldest Ubuntu there is a runner for: the binary links against
           # glibc, which runs what was built against an older one but not a
           # newer one, so this is what lets it start on 22.04 and on.
+          #
+          # Each package gets a build of its own, which knows which package it
+          # came in: that is what runbook update goes by.
           - os: ubuntu-22.04
             goos: linux
+            channel: tar
+            bin: runbook
+          - os: ubuntu-22.04
+            goos: linux
+            channel: deb
             bin: runbook
           - os: windows-latest
             goos: windows
+            channel: zip
             bin: runbook.exe
     runs-on: ${{ matrix.os }}
     defaults:
@@ -42,20 +51,21 @@ jobs:
       # Windows has what it needs already.
       - if: matrix.goos == 'linux'
         run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev xorg-dev libwayland-dev libxkbcommon-dev wayland-protocols
-      - run: go build -trimpath -ldflags='-s -w' -o "dist/${{ matrix.bin }}" ./cmd/runbook
-      # The binary has to say the version it is released as: anything else, a
-      # pseudo-version or +dirty, means go build did not see the tag.
+      - run: go build -trimpath -ldflags='-s -w -X runbook/internal/cli.channel=${{ matrix.channel }}' -o "dist/${{ matrix.bin }}" ./cmd/runbook
+      # The binary has to say the version it is released as, and the package it
+      # comes in: anything else, a pseudo-version or +dirty, means go build did
+      # not see the tag.
       - name: Check the version
         run: |
           got=$("dist/${{ matrix.bin }}" --version)
-          want="runbook $GITHUB_REF_NAME"
+          want="runbook $GITHUB_REF_NAME (${{ matrix.channel }})"
           if [ "$got" != "$want" ]; then
             echo "the binary says '$got', want '$want'"
             exit 1
           fi
       - uses: actions/upload-artifact@v4
         with:
-          name: runbook-${{ matrix.goos }}
+          name: runbook-${{ matrix.channel }}
           path: dist/${{ matrix.bin }}
           if-no-files-found: error
 
@@ -93,16 +103,16 @@ jobs:
           mkdir dist
           # Artifacts lose the file mode on the way, so the binary is made
           # executable again before it is packed.
-          chmod +x artifacts/runbook-linux/runbook
+          chmod +x artifacts/runbook-tar/runbook artifacts/runbook-deb/runbook
           name=runbook_${GITHUB_REF_NAME}
-          tar -czf "dist/${name}_linux_amd64.tar.gz" -C artifacts/runbook-linux runbook
-          (cd artifacts/runbook-windows && zip -q "../../dist/${name}_windows_amd64.zip" runbook.exe)
+          tar -czf "dist/${name}_linux_amd64.tar.gz" -C artifacts/runbook-tar runbook
+          (cd artifacts/runbook-zip && zip -q "../../dist/${name}_windows_amd64.zip" runbook.exe)
 
           # The .deb: the binary, and the bash and fish completion where those
           # shells look for them.
           version=${GITHUB_REF_NAME#v}
           root=deb/debian/runbook
-          install -Dm755 artifacts/runbook-linux/runbook "$root/usr/bin/runbook"
+          install -Dm755 artifacts/runbook-deb/runbook "$root/usr/bin/runbook"
           install -d -m755 "$root/usr/share/bash-completion/completions" "$root/usr/share/fish/vendor_completions.d"
           "$root/usr/bin/runbook" completion bash > "$root/usr/share/bash-completion/completions/runbook"
           "$root/usr/bin/runbook" completion fish > "$root/usr/share/fish/vendor_completions.d/runbook.fish"

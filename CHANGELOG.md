@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Added
+- `runbook update` installs the latest release when Runbook came from the `.deb`: it downloads the `.deb`, checks it against the release's `checksums.txt` and installs it with `sudo apt`. The `.tar.gz`, the Windows `.zip` and a build from source say where the latest one is instead
+- `runbook --version` says which package a release build came in, such as `runbook v0.5.0 (deb)`
+
 ## [0.4.2] - 2026-10-07
 
 ### Changed

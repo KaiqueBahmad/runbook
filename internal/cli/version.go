@@ -1,6 +1,9 @@
 package cli
 
-import "runtime/debug"
+import (
+	"fmt"
+	"runtime/debug"
+)
 
 // version is the semantic version of this build. Left empty, it is read from
 // what go build stamped into the binary: the git tag of the commit it was built
@@ -18,4 +21,26 @@ func currentVersion() string {
 		return info.Main.Version
 	}
 	return "(devel)"
+}
+
+// channel is how this build reaches whoever runs it, set by the release that
+// packs it with -ldflags "-X runbook/internal/cli.channel=deb": "deb" for the
+// .deb, "tar" for the .tar.gz and "zip" for the Windows .zip. Left empty, it
+// is a build from source. It is what decides how update brings it up to date.
+var channel string
+
+// The channels a release sets.
+const (
+	channelDeb = "deb"
+	channelTar = "tar"
+	channelZip = "zip"
+)
+
+// versionLine is what --version prints: the version, and the channel when a
+// release set one.
+func versionLine() string {
+	if channel == "" {
+		return "runbook " + currentVersion()
+	}
+	return fmt.Sprintf("runbook %s (%s)", currentVersion(), channel)
 }
