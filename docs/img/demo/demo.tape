@@ -1,8 +1,8 @@
 Output "../demo.gif"
 
-Set FontSize 18
-Set Width 1000
-Set Height 760
+Set FontSize 15
+Set Width 1100
+Set Height 920
 Set Theme "Dracula"
 Set Shell bash
 Set TypingSpeed 60ms
@@ -13,13 +13,14 @@ Enter
 Sleep 500ms
 Show
 
+Sleep 1000ms
 Type "runbook --help"
 Enter
-Sleep 3000ms
+Sleep 3500ms
 
 Type "clear"
 Enter
-Sleep 300ms
+Sleep 1000ms
 
 Type "runbook run db/migrate"
 Enter
