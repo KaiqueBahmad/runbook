@@ -6,6 +6,39 @@ It doesn't isolate or containerize anything. It's just an organizer: point it at
 
 ![runbook start/ps/logs/stop demo](docs/img/demo.gif)
 
+## Syntax
+
+A `runbook.yml` is a flat list of names, each with the fields it is made of underneath:
+
+```yaml
+services/api:
+  run: go run main.go
+  dir: ./api
+  description: The backend, on port 8080
+  env:
+    PORT: 8080
+    DATABASE_URL: postgres://user:password@localhost:5432/db
+```
+
+`run` is the only field a command needs — the rest are optional:
+
+- `run` — the shell command to run.
+- `description` — a one line summary, shown next to the name.
+- `dir` — the working directory, relative to the runbook.yml's own; the current directory if left out.
+- `env` — extra environment variables, as `KEY: value` pairs underneath.
+
+Slashes in the name group commands into folders, in the GUI's sidebar and in completion — `services/api` and `services/web` sit together as `services/`. They don't touch `dir`; a command's directory is only ever what its own `dir` says.
+
+A `run` that doesn't fit on one line is written as a `|`, with the command's lines indented underneath, handed to the shell as they are written — comments, blank lines and all:
+
+```yaml
+db/reset:
+  run: |
+    dropdb app
+    createdb app
+    psql app < schema.sql
+```
+
 ## Why
 
 Most projects end up with a handful of commands scattered across terminals and docs — some you leave running, some you run once and forget:
