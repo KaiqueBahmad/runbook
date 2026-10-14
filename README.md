@@ -1,8 +1,8 @@
 # Runbook
 
-Runbook turns a plain text file describing your project's commands into a GUI control panel — one place to run everything your project needs, instead of juggling a pile of terminal tabs and a README full of instructions.
+Runbook turns a plain text file describing your project's commands into a single place to run everything your project needs, instead of juggling a pile of terminal tabs and a README full of instructions.
 
-It doesn't isolate or containerize anything. It's just an organizer: point it at commands you'd otherwise run by hand, and get buttons and live logs instead. That covers both long-running processes (servers, watchers) and one-off scripts (migrations, seeders, build tasks, lint/test runs) — anything you'd normally type into a terminal.
+It doesn't isolate or containerize anything. It's just an organizer: point it at commands you'd otherwise run by hand, and run, background, stop, and tail them from one CLI instead. That covers both long-running processes (servers, watchers) and one-off scripts (migrations, seeders, build tasks, lint/test runs) — anything you'd normally type into a terminal. Starting a command that's already running just says so and exits 0 instead of failing, so a command built out of several `runbook start`s is safe to rerun. A GUI control panel is also there for the same runbook.yml, if you'd rather click buttons than type commands.
 
 ![runbook start/ps/logs/stop demo](docs/img/demo.gif)
 
