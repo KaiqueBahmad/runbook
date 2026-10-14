@@ -301,3 +301,66 @@ go build -o bin/runbook ./cmd/runbook
 ```
 
 `go test ./...` runs the tests.
+
+## Useful patterns
+
+A `run` is just a shell command, and `runbook start`/`runbook stop` are shell commands too — so a command can orchestrate others. One pair that's worth having in most projects brings the whole stack up and down in the right order:
+
+```yaml
+stack/up:
+  description: Start the whole stack as runbook processes
+  run: runbook start infra/up-foreground api/run web/run
+
+stack/down:
+  description: Stop the whole stack
+  run: |
+    runbook stop web/run api/run infra/up-foreground
+    runbook run infra/down
+```
+
+When infra is a `docker compose` project, give it a foreground and a background variant: the foreground one is what `stack/up` starts under Runbook, so its output ends up in `runbook logs`; the background one is for when you just want the containers up and don't care to watch them:
+
+```yaml
+infra/up:
+  description: Start the containers in the background
+  run: docker compose up -d
+
+infra/up-foreground:
+  description: Start the containers in the foreground, so stack/up can run it as a command
+  run: docker compose up
+
+infra/down:
+  description: Stop the containers, keeping their volumes
+  run: docker compose down
+
+infra/logs:
+  description: Follow what the containers write
+  run: docker compose logs -f
+```
+
+A tunnel (ngrok or similar, for webhooks that need a public HTTPS URL during development) follows the same up/down shape, plus a command that asks the tunnel's own API for the URL it's using right now and prints it ready to paste wherever it's needed:
+
+```yaml
+tunnel/up:
+  description: Start the HTTPS tunnel
+  run: runbook start tunnel/nginx tunnel/ngrok
+
+tunnel/down:
+  description: Stop the tunnel
+  run: runbook stop tunnel/ngrok tunnel/nginx
+
+tunnel/config:
+  description: Print the public URL to paste into the provider's webhook settings
+  run: |
+    url=$(curl -s http://127.0.0.1:4040/api/tunnels | python3 -c 'import json,sys; t=json.load(sys.stdin)["tunnels"]; print(t[0]["public_url"] if t else "")')
+    [ -z "$url" ] && { echo "tunnel is not up: runbook run tunnel/up"; exit 1; }
+    echo "webhook url: $url/webhooks"
+```
+
+And for anything you'd otherwise leave a `watch` running for in its own terminal tab:
+
+```yaml
+git/watch:
+  description: Watch git status
+  run: watch -n 0.5 git status
+```
