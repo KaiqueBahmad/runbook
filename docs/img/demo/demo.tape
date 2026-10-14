@@ -1,8 +1,9 @@
 Output "../demo.gif"
 
 Set FontSize 15
-Set Width 1100
-Set Height 920
+Set Padding 30
+Set Width 1040
+Set Height 860
 Set Theme "Dracula"
 Set Shell bash
 Set TypingSpeed 60ms
