@@ -4,6 +4,8 @@ Runbook turns a plain text file describing your project's commands into a GUI co
 
 It doesn't isolate or containerize anything. It's just an organizer: point it at commands you'd otherwise run by hand, and get buttons and live logs instead. That covers both long-running processes (servers, watchers) and one-off scripts (migrations, seeders, build tasks, lint/test runs) — anything you'd normally type into a terminal.
 
+![runbook start/ps/logs/stop demo](docs/img/demo.gif)
+
 ## Why
 
 Most projects end up with a handful of commands scattered across terminals and docs — some you leave running, some you run once and forget:

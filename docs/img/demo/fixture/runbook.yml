@@ -1,0 +1,34 @@
+stack/up:
+  description: Start the whole stack as runbook processes
+  run: runbook start infra/up api/run web/run
+
+stack/down:
+  description: Stop the whole stack
+  run: runbook stop web/run api/run infra/up
+
+infra/up:
+  description: Postgres + Redis in the background
+  run: |
+    echo "postgres ready on :5432"
+    echo "redis ready on :6379"
+    while true; do sleep 2; echo "checkpoint complete"; done
+
+api/run:
+  description: The backend API on :8080
+  run: ./run.sh
+  dir: ./services/api
+
+web/run:
+  description: The frontend dev server on :3000
+  run: |
+    echo "web ready on :3000"
+    while true; do sleep 1; echo "compiled in 180ms"; done
+
+db/migrate:
+  description: Apply pending database migrations
+  run: |
+    echo "applying 0007_add_orders_index.sql"
+    sleep 1
+    echo "applying 0008_add_users_email_unique.sql"
+    sleep 1
+    echo "2 migrations applied"
